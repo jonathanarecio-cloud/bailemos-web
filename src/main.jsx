@@ -24,6 +24,7 @@ function App() {
   const [event, setEvent] = useState(null);
   const [ciudades, setCiudades] = useState(ciudadesIniciales);
   const [ciudadActiva, setCiudadActiva] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState("");
 
@@ -144,6 +145,8 @@ function App() {
           onVoy={marcarVoy}
           onOpenChat={() => setScreen(event ? "event-chat" : "general-chat")}
           onOpenGeneralChat={() => setScreen("general-chat")}
+          onOpenPeople={() => setScreen("people")}
+          onOpenMessages={() => setScreen("messages")}
           onOpenBailaCar={() => setScreen("bailacar")}
           onOpenPublish={() => setScreen("publish-event")}
           onOpenMagic={() => setScreen("magic")}
@@ -178,6 +181,47 @@ function App() {
           authHeaders={authHeaders}
           onBack={() => setScreen("home")}
           onRate={(usuarioId) => setScreen(`rating:${usuarioId}`)}
+          onMessage={(persona) => {
+            setSelectedUser({ usuarioId: persona.usuarioId, nombre: persona.nombre, rol: persona.rol });
+            setScreen("private-chat");
+          }}
+        />
+      )}
+
+      {screen === "people" && (
+        <PeoplePanel
+          authHeaders={authHeaders}
+          onBack={() => setScreen("home")}
+          onMessage={(persona) => {
+            setSelectedUser(persona);
+            setScreen("private-chat");
+          }}
+          onRate={(usuarioId) => setScreen(`rating:${usuarioId}`)}
+        />
+      )}
+
+      {screen === "messages" && (
+        <MessagesPanel
+          authHeaders={authHeaders}
+          onBack={() => setScreen("home")}
+          onOpen={(chat) => {
+            setSelectedUser({
+              usuarioId: chat.otroUsuarioId,
+              nombre: chat.otroUsuarioNombre,
+              rol: chat.otroUsuarioRol
+            });
+            setScreen("private-chat");
+          }}
+        />
+      )}
+
+      {screen === "private-chat" && selectedUser && (
+        <ChatPanel
+          title={`Chat con ${selectedUser.nombre}`}
+          endpointGet={`/chat/privado/${selectedUser.usuarioId}`}
+          endpointPost={`/chat/privado/${selectedUser.usuarioId}/mensajes`}
+          authHeaders={authHeaders}
+          onBack={() => setScreen("people")}
         />
       )}
 
@@ -350,6 +394,8 @@ function Home({
   onVoy,
   onOpenChat,
   onOpenGeneralChat,
+  onOpenPeople,
+  onOpenMessages,
   onOpenBailaCar,
   onOpenPublish,
   onOpenMagic,
@@ -365,6 +411,8 @@ function Home({
       <div className="quick-grid">
         <button onClick={onOpenPublish}>Publicar evento</button>
         <button onClick={onOpenMagic}>Haz tu magia</button>
+        <button onClick={onOpenPeople}>Gente</button>
+        <button onClick={onOpenMessages}>Mensajes</button>
         <button onClick={onOpenGeneralChat}>Chat general</button>
         <button onClick={onOpenRating}>Valorar</button>
       </div>
@@ -406,7 +454,7 @@ function Home({
   );
 }
 
-function CityPanel({ ciudadActiva, authHeaders, onBack, onRate }) {
+function CityPanel({ ciudadActiva, authHeaders, onBack, onRate, onMessage }) {
   const ciudadId = ciudadActiva?.ciudadId;
   const [personas, setPersonas] = useState([]);
 
@@ -433,7 +481,10 @@ function CityPanel({ ciudadActiva, authHeaders, onBack, onRate }) {
                 <strong>{persona.nombre}</strong>
                 <small>{persona.rol}</small>
               </span>
-              <button className="secondary compact" onClick={() => onRate(persona.usuarioId)}>Valorar</button>
+              <div className="mini-actions">
+                <button className="secondary compact" onClick={() => onMessage(persona)}>Mensaje</button>
+                <button className="secondary compact" onClick={() => onRate(persona.usuarioId)}>Valorar</button>
+              </div>
             </div>
           ))
         )}
@@ -445,6 +496,98 @@ function CityPanel({ ciudadActiva, authHeaders, onBack, onRate }) {
         endpointPost={ciudadId ? `/chat/ciudad/${ciudadId}/mensajes` : "/chat/general/mensajes"}
         authHeaders={authHeaders}
       />
+    </section>
+  );
+}
+
+function PeoplePanel({ authHeaders, onBack, onMessage, onRate }) {
+  const [personas, setPersonas] = useState([]);
+  const [busqueda, setBusqueda] = useState("");
+
+  async function cargar() {
+    try {
+      const response = await fetch(`${API_URL}/usuarios`, { headers: authHeaders });
+      if (!response.ok) throw new Error();
+      setPersonas(await response.json());
+    } catch {
+      setPersonas([]);
+    }
+  }
+
+  useEffect(() => {
+    cargar();
+  }, []);
+
+  const filtradas = personas.filter((persona) => {
+    const texto = `${persona.nombre} ${persona.email} ${persona.rol} ${persona.ciudadNombre || ""}`.toLowerCase();
+    return texto.includes(busqueda.toLowerCase());
+  });
+
+  return (
+    <section className="screen">
+      <button className="back" onClick={onBack}>Volver</button>
+      <h2>Gente BAILEMOS</h2>
+      <p className="muted">Busca bailadores, profesionales y amigos para chatear.</p>
+      <input className="search" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar por nombre, ciudad o rol" />
+      <section className="card">
+        {filtradas.length === 0 ? (
+          <p className="muted">Todavia no hay otros usuarios registrados.</p>
+        ) : (
+          filtradas.map((persona) => (
+            <div className="list-row with-action" key={persona.usuarioId}>
+              <span>
+                <strong>{persona.nombre}</strong>
+                <small>{persona.rol}{persona.ciudadNombre ? ` - ${persona.ciudadNombre}` : ""}</small>
+              </span>
+              <div className="mini-actions">
+                <button className="primary compact" onClick={() => onMessage(persona)}>Mensaje</button>
+                <button className="secondary compact" onClick={() => onRate(persona.usuarioId)}>Valorar</button>
+              </div>
+            </div>
+          ))
+        )}
+      </section>
+    </section>
+  );
+}
+
+function MessagesPanel({ authHeaders, onBack, onOpen }) {
+  const [chats, setChats] = useState([]);
+
+  async function cargar() {
+    try {
+      const response = await fetch(`${API_URL}/chat/privados`, { headers: authHeaders });
+      if (!response.ok) throw new Error();
+      setChats(await response.json());
+    } catch {
+      setChats([]);
+    }
+  }
+
+  useEffect(() => {
+    cargar();
+  }, []);
+
+  return (
+    <section className="screen">
+      <button className="back" onClick={onBack}>Volver</button>
+      <h2>Mis mensajes</h2>
+      <p className="muted">Tus conversaciones privadas dentro de BAILEMOS.</p>
+      <section className="card">
+        {chats.length === 0 ? (
+          <p className="muted">Aun no tienes conversaciones. Entra en Gente y escribe a alguien.</p>
+        ) : (
+          chats.map((chat) => (
+            <button className="conversation-row" key={chat.chatId} onClick={() => onOpen(chat)}>
+              <span>
+                <strong>{chat.otroUsuarioNombre}</strong>
+                <small>{chat.otroUsuarioRol}</small>
+              </span>
+              <em>{chat.ultimoMensaje}</em>
+            </button>
+          ))
+        )}
+      </section>
     </section>
   );
 }

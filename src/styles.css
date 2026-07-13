@@ -238,13 +238,49 @@ h3 {
   gap: 3px;
 }
 
+.mini-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .compact {
   min-height: 38px;
   padding: 0 12px;
+  font-size: 0.85rem;
 }
 
 .list-row:last-child {
   border-bottom: 0;
+}
+
+.conversation-row {
+  width: 100%;
+  border: 1px solid rgba(255, 122, 49, 0.35);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+}
+
+.conversation-row span,
+.conversation-row em {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.conversation-row em {
+  color: var(--muted);
+  font-style: normal;
+  max-width: 48%;
 }
 
 .segmented {
