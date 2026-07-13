@@ -5,7 +5,7 @@ import "./styles.css";
 const API_URL = "https://bailemos-api.onrender.com";
 
 const ciudadesIniciales = [
-  { id: 1, nombre: "Malaga" },
+  { id: 1, nombre: "Málaga" },
   { id: 2, nombre: "Madrid" },
   { id: 3, nombre: "Barcelona" },
   { id: 4, nombre: "Valencia" },
@@ -309,7 +309,7 @@ function Welcome({ onLogin, onRegister }) {
       <h1>BAILEMOS!</h1>
       <p>Baila. Conecta. Vive el baile.</p>
       <div className="stack">
-        <button className="primary" onClick={onLogin}>Iniciar sesion</button>
+        <button className="primary" onClick={onLogin}>Iniciar sesión</button>
         <button className="secondary" onClick={onRegister}>Crear cuenta</button>
       </div>
     </main>
@@ -335,7 +335,7 @@ function Login({ onBack, onSuccess }) {
       });
       onSuccess(data);
     } catch {
-      alert("Usuario o contrasena incorrectos.");
+      alert("Usuario o contraseña incorrectos.");
     } finally {
       setBusy(false);
     }
@@ -466,7 +466,7 @@ function Home({
 
       <section className="card">
         <h3>Estoy en una ciudad</h3>
-        <p>{ciudadActiva ? `Ahora estas en ${ciudadActiva.ciudadNombre}` : "Elige ciudad para ver gente, eventos y chat local."}</p>
+        <p>{ciudadActiva ? `Ahora estás en ${ciudadActiva.ciudadNombre}` : "Elige ciudad para ver gente, eventos y chat local."}</p>
         <div className="chips">
           {ciudades.map((ciudad) => (
             <button key={ciudad.id} onClick={() => onCiudad(ciudad)}>{ciudad.nombre}</button>
@@ -477,7 +477,7 @@ function Home({
       <section className="card">
         <h3>Eventos disponibles</h3>
         <div className="list">
-          {events.length === 0 && <p className="muted">Aun no hay eventos. Publica el primero.</p>}
+          {events.length === 0 && <p className="muted">Aún no hay eventos. Publica el primero.</p>}
           {events.map((item) => (
             <div key={item.id} className="list-row">
               <strong>{item.titulo}</strong>
@@ -509,7 +509,7 @@ function CityPanel({ ciudadActiva, authHeaders, onBack, onRate, onMessage }) {
       <p className="muted">Personas conectadas a esta ciudad.</p>
       <div className="card">
         {personas.length === 0 ? (
-          <p>Todavia no hay personas conectadas.</p>
+          <p>Todavía no hay personas conectadas.</p>
         ) : (
           personas.map((persona) => (
             <div className="list-row with-action" key={persona.usuarioId}>
@@ -567,7 +567,7 @@ function PeoplePanel({ authHeaders, onBack, onOpenProfile, onMessage, onRate }) 
       <input className="search" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar por nombre, ciudad o rol" />
       <section className="card">
         {filtradas.length === 0 ? (
-          <p className="muted">Todavia no hay otros usuarios registrados.</p>
+          <p className="muted">Todavía no hay otros usuarios registrados.</p>
         ) : (
           filtradas.map((persona) => (
             <div className="list-row with-action" key={persona.usuarioId}>
@@ -631,7 +631,7 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage }) {
     });
 
     if (!response.ok) {
-      alert("No se pudo completar la accion.");
+      alert("No se pudo completar la acción.");
       return;
     }
 
@@ -651,7 +651,7 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage }) {
     });
 
     if (!response.ok) {
-      alert("No se pudo guardar la valoracion.");
+      alert("No se pudo guardar la valoración.");
       return;
     }
 
@@ -671,7 +671,7 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage }) {
     });
 
     if (!response.ok) {
-      alert("No se pudo guardar la recomendacion.");
+      alert("No se pudo guardar la recomendación.");
       return;
     }
 
@@ -726,7 +726,7 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage }) {
           <option value="1">1 - Mala experiencia</option>
         </select>
         <textarea value={comentarioValoracion} onChange={(event) => setComentarioValoracion(event.target.value)} placeholder="Cuenta como fue bailar o trabajar con esta persona" />
-        <button className="primary">Guardar valoracion</button>
+        <button className="primary">Guardar valoración</button>
       </form>
 
       <form className="card stack" onSubmit={guardarRecomendacion}>
@@ -736,12 +736,12 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage }) {
           <option value="">Sin evento concreto</option>
           {events.map((evento) => <option key={evento.id} value={evento.id}>{evento.titulo}</option>)}
         </select>
-        <button className="primary">Guardar recomendacion</button>
+        <button className="primary">Guardar recomendación</button>
       </form>
 
       <section className="card">
         <h3>Valoraciones visibles</h3>
-        {valoraciones.length === 0 ? <p className="muted">Aun no hay valoraciones.</p> : valoraciones.map((item) => (
+        {valoraciones.length === 0 ? <p className="muted">Aún no hay valoraciones.</p> : valoraciones.map((item) => (
           <div className="list-row" key={item.id}>
             <strong>{item.puntuacion}/5 - {item.autorNombre}</strong>
             <span>{item.comentario || "Sin comentario"}</span>
@@ -751,7 +751,7 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage }) {
 
       <section className="card">
         <h3>Recomendaciones visibles</h3>
-        {recomendaciones.length === 0 ? <p className="muted">Aun no hay recomendaciones.</p> : recomendaciones.map((item) => {
+        {recomendaciones.length === 0 ? <p className="muted">Aún no hay recomendaciones.</p> : recomendaciones.map((item) => {
           const evento = events.find((event) => Number(event.id) === Number(item.eventoId));
           return (
             <div className="list-row" key={item.id}>
@@ -790,7 +790,7 @@ function MessagesPanel({ authHeaders, onBack, onOpen }) {
       <p className="muted">Tus conversaciones privadas dentro de BAILEMOS.</p>
       <section className="card">
         {chats.length === 0 ? (
-          <p className="muted">Aun no tienes conversaciones. Entra en Gente y escribe a alguien.</p>
+          <p className="muted">Aún no tienes conversaciones. Entra en Gente y escribe a alguien.</p>
         ) : (
           chats.map((chat) => (
             <button className="conversation-row" key={chat.chatId} onClick={() => onOpen(chat)}>
@@ -911,8 +911,8 @@ function ProfilePanel({ session, ciudades, authHeaders, onBack, onSaved }) {
 
       <form className="card stack" onSubmit={guardar}>
         {form.fotoUrl && <img className="profile-preview" src={form.fotoUrl} alt="Foto de perfil" />}
-        <input value={form.nombreArtistico} onChange={(e) => setField("nombreArtistico", e.target.value)} placeholder="Nombre artistico" />
-        <textarea value={form.biografia} onChange={(e) => setField("biografia", e.target.value)} placeholder="Biografia" />
+        <input value={form.nombreArtistico} onChange={(e) => setField("nombreArtistico", e.target.value)} placeholder="Nombre artístico" />
+        <textarea value={form.biografia} onChange={(e) => setField("biografia", e.target.value)} placeholder="Biografía" />
         <select value={form.ciudadId} onChange={(e) => setField("ciudadId", e.target.value)}>
           <option value="">Ciudad principal</option>
           {ciudades.map((ciudad) => <option key={ciudad.id} value={ciudad.id}>{ciudad.nombre}</option>)}
@@ -998,7 +998,7 @@ function ChatPanel({ title, endpointGet, endpointPost, authHeaders, onBack, embe
         {blocked ? (
           <p className="muted">No se puede contactar porque hay un bloqueo activo.</p>
         ) : mensajes.length === 0 ? (
-          <p className="muted">Todavia no hay mensajes. Escribe el primero.</p>
+          <p className="muted">Todavía no hay mensajes. Escribe el primero.</p>
         ) : (
           mensajes.map((item) => (
             <div className="message" key={item.id}>
@@ -1079,7 +1079,7 @@ function BailaCar({ onBack, event, authHeaders }) {
 
       <section className="card">
         <h3>Viajes publicados</h3>
-        {viajes.length === 0 ? <p className="muted">Aun no hay viajes publicados.</p> : viajes.map((viaje) => (
+        {viajes.length === 0 ? <p className="muted">Aún no hay viajes publicados.</p> : viajes.map((viaje) => (
           <div className="list-row" key={viaje.id}>
             <strong>{viaje.tipo === "OFREZCO_PLAZAS" ? "Ofrece plazas" : "Busca coche"} - {viaje.nombreUsuario}</strong>
             <span>{viaje.ciudadSalida} - {viaje.horaSalida} - Plazas: {viaje.plazas || "Pendiente"}</span>
@@ -1155,12 +1155,12 @@ function PublishEvent({ ciudades, authHeaders, onBack, onCreated }) {
           {ciudades.map((ciudad) => <option key={ciudad.id} value={ciudad.id}>{ciudad.nombre}</option>)}
         </select>
         <input value={form.lugarNombre} onChange={(e) => setField("lugarNombre", e.target.value)} placeholder="Sala, disco o academia" />
-        <input value={form.direccion} onChange={(e) => setField("direccion", e.target.value)} placeholder="Direccion" />
+        <input value={form.direccion} onChange={(e) => setField("direccion", e.target.value)} placeholder="Dirección" />
         <input value={form.fechaInicio} onChange={(e) => setField("fechaInicio", e.target.value)} type="datetime-local" required />
         <input value={form.fechaFin} onChange={(e) => setField("fechaFin", e.target.value)} type="datetime-local" />
         <input value={form.precio} onChange={(e) => setField("precio", e.target.value)} placeholder="Precio" inputMode="decimal" />
         <input value={form.cartelUrl} onChange={(e) => setField("cartelUrl", e.target.value)} placeholder="URL del cartel o Instagram" />
-        <textarea value={form.descripcion} onChange={(e) => setField("descripcion", e.target.value)} placeholder="Descripcion" />
+        <textarea value={form.descripcion} onChange={(e) => setField("descripcion", e.target.value)} placeholder="Descripción" />
         <div className="chips">
           {estilosDisponibles.map((estilo) => (
             <button type="button" key={estilo} className={form.estilos.includes(estilo) ? "chip-active" : ""} onClick={() => toggleEstilo(estilo)}>{estilo}</button>
@@ -1183,7 +1183,7 @@ function MagicPanel({ events, ciudades, ciudadActiva, onBack }) {
     <section className="screen">
       <button className="back" onClick={onBack}>Volver</button>
       <h2>Haz tu magia</h2>
-      <p className="muted">BAILEMOS te propone un plan rapido segun ciudad y estilo.</p>
+      <p className="muted">BAILEMOS te propone un plan rápido según ciudad y estilo.</p>
       <div className="card stack">
         <select value={ciudadId} onChange={(e) => setCiudadId(e.target.value)}>
           {ciudades.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
@@ -1195,7 +1195,7 @@ function MagicPanel({ events, ciudades, ciudadActiva, onBack }) {
       <article className="card feature-card">
         <small>{ciudad?.nombre || "BAILEMOS"}</small>
         <h3>{elegido ? elegido.titulo : "Publica el primer evento de esta ciudad"}</h3>
-        <p>{elegido ? `${elegido.lugarNombre || "Lugar pendiente"} - ${elegido.fechaInicio || ""}` : "Cuando haya eventos, aqui aparecera una recomendacion automatica."}</p>
+        <p>{elegido ? `${elegido.lugarNombre || "Lugar pendiente"} - ${elegido.fechaInicio || ""}` : "Cuando haya eventos, aquí aparecerá una recomendación automática."}</p>
       </article>
     </section>
   );
@@ -1235,7 +1235,7 @@ function RatingPanel({ session, authHeaders, defaultUserId, onBack }) {
     });
 
     if (!response.ok) {
-      alert("No se pudo guardar la valoracion.");
+      alert("No se pudo guardar la valoración.");
       return;
     }
 
@@ -1257,11 +1257,11 @@ function RatingPanel({ session, authHeaders, defaultUserId, onBack }) {
           <option value="1">1 - Mala experiencia</option>
         </select>
         <textarea value={comentario} onChange={(e) => setComentario(e.target.value)} placeholder="Cuenta como fue bailar o trabajar con esta persona" />
-        <button className="primary">Guardar valoracion</button>
+        <button className="primary">Guardar valoración</button>
       </form>
       <section className="card">
         <h3>Valoraciones recibidas</h3>
-        {valoraciones.length === 0 ? <p className="muted">Aun no hay valoraciones.</p> : valoraciones.map((item) => (
+        {valoraciones.length === 0 ? <p className="muted">Aún no hay valoraciones.</p> : valoraciones.map((item) => (
           <div className="list-row" key={item.id}>
             <strong>{item.puntuacion}/5 - {item.autorNombre}</strong>
             <span>{item.comentario || "Sin comentario"}</span>
