@@ -235,6 +235,11 @@ h3 {
   margin-top: 14px;
 }
 
+.full-button,
+.full-width {
+  width: 100%;
+}
+
 .chips {
   display: flex;
   flex-wrap: wrap;

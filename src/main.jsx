@@ -138,6 +138,7 @@ function App() {
 
       {screen === "home" && (
         <Home
+          session={session}
           loading={loading}
           event={event}
           events={events}
@@ -153,9 +154,27 @@ function App() {
           onOpenPublish={() => setScreen("publish-event")}
           onOpenMagic={() => setScreen("magic")}
           onOpenRating={() => setScreen("rating")}
+          onOpenAdmin={() => setScreen("admin")}
+          onOpenAttendees={() => setScreen("attendees")}
           onCiudad={marcarCiudad}
           authHeaders={authHeaders}
         />
+      )}
+
+      {screen === "attendees" && event && (
+        <AttendeesPanel
+          event={event}
+          authHeaders={authHeaders}
+          onBack={() => setScreen("home")}
+          onOpenProfile={(persona) => {
+            setSelectedUser({ usuarioId: persona.usuarioId, nombre: persona.nombre, rol: persona.rol });
+            setScreen("public-profile");
+          }}
+        />
+      )}
+
+      {screen === "admin" && (
+        <AdminPanel authHeaders={authHeaders} session={session} onBack={() => setScreen("home")} />
       )}
 
       {screen === "event-chat" && (
@@ -359,6 +378,7 @@ function Register({ onBack, onSuccess }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rol, setRol] = useState("BAILADOR");
+  const [codigoAdmin, setCodigoAdmin] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function submit(event) {
@@ -368,7 +388,13 @@ function Register({ onBack, onSuccess }) {
       const data = await fetch(`${API_URL}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre, email, password, rol })
+        body: JSON.stringify({
+          nombre,
+          email,
+          password,
+          rol: codigoAdmin.trim() ? "SUPER_ADMIN" : rol,
+          codigoAdmin: codigoAdmin.trim() || null
+        })
       }).then((response) => {
         if (!response.ok) throw new Error();
         return response.json();
@@ -391,6 +417,7 @@ function Register({ onBack, onSuccess }) {
           <button type="button" className={rol === "BAILADOR" ? "active" : ""} onClick={() => setRol("BAILADOR")}>Bailador</button>
           <button type="button" className={rol === "PROFESIONAL" ? "active" : ""} onClick={() => setRol("PROFESIONAL")}>Profesional</button>
         </div>
+        <input value={codigoAdmin} onChange={(e) => setCodigoAdmin(e.target.value)} placeholder="Código privado admin (solo Jonathan)" type="password" />
         <button className="primary" disabled={busy}>{busy ? "Creando..." : "Crear cuenta"}</button>
       </form>
     </AuthCard>
@@ -422,6 +449,7 @@ function Header({ session, onLogout }) {
 }
 
 function Home({
+  session,
   loading,
   event,
   events,
@@ -437,9 +465,13 @@ function Home({
   onOpenPublish,
   onOpenMagic,
   onOpenRating,
+  onOpenAdmin,
+  onOpenAttendees,
   onCiudad,
   authHeaders
 }) {
+  const esAdmin = session?.rol === "ADMIN" || session?.rol === "SUPER_ADMIN";
+
   return (
     <section className="screen">
       <div className="accent" />
@@ -454,6 +486,7 @@ function Home({
         <button onClick={onOpenProfile}>Mi perfil</button>
         <button onClick={onOpenGeneralChat}>Chat general</button>
         <button onClick={onOpenRating}>Valorar</button>
+        {esAdmin && <button onClick={onOpenAdmin}>Admin</button>}
       </div>
 
       <article className="card feature-card">
@@ -462,12 +495,11 @@ function Home({
         <p>{event ? `${event.lugarNombre || "Lugar pendiente"} - Van ${event.asistentes || 0} personas` : "Puedes publicar un evento o entrar al chat general."}</p>
         <div className="actions">
           <button className="primary" onClick={onVoy} disabled={!event}>Voy</button>
+          <button className="secondary" onClick={onOpenAttendees} disabled={!event}>Quién va</button>
           <button className="secondary" onClick={onOpenChat}>{event ? "Chat evento" : "Chat general"}</button>
-          <button className="secondary" onClick={onOpenBailaCar}>BailaCar</button>
         </div>
+        <button className="secondary full-button" onClick={onOpenBailaCar}>BailaCar</button>
       </article>
-
-      {event && <EventAttendees event={event} authHeaders={authHeaders} />}
 
       <section className="card">
         <h3>Estoy en una ciudad</h3>
@@ -541,7 +573,7 @@ function CityPanel({ ciudadActiva, authHeaders, onBack, onRate, onMessage }) {
   );
 }
 
-function EventAttendees({ event, authHeaders }) {
+function AttendeesPanel({ event, authHeaders, onBack, onOpenProfile }) {
   const [asistentes, setAsistentes] = useState([]);
 
   useEffect(() => {
@@ -553,18 +585,135 @@ function EventAttendees({ event, authHeaders }) {
   }, [event?.id]);
 
   return (
-    <section className="card">
+    <section className="screen">
+      <button className="back" onClick={onBack}>Volver</button>
       <h3>Quién va</h3>
+      <p className="muted">{event.titulo}</p>
+      <div className="card">
       {asistentes.length === 0 ? (
         <p className="muted">Aún no hay asistentes confirmados.</p>
       ) : (
         asistentes.map((persona) => (
-          <div className="list-row" key={persona.usuarioId}>
+          <button className="list-row person-link full-width" key={persona.usuarioId} onClick={() => onOpenProfile(persona)}>
             <strong>{persona.nombre} {persona.amigoMio && <span className="friend-badge">Amigo</span>}</strong>
             <span>{persona.rol}</span>
-          </div>
+          </button>
         ))
       )}
+      </div>
+    </section>
+  );
+}
+
+function AdminPanel({ authHeaders, session, onBack }) {
+  const [usuarios, setUsuarios] = useState([]);
+  const [eventos, setEventos] = useState([]);
+  const [form, setForm] = useState({ nombre: "", email: "", password: "", rol: "ADMIN" });
+  const esSuperAdmin = session?.rol === "SUPER_ADMIN";
+
+  async function cargar() {
+    try {
+      const [usuariosResponse, eventosResponse] = await Promise.all([
+        fetch(`${API_URL}/admin/usuarios`, { headers: authHeaders }),
+        fetch(`${API_URL}/admin/eventos`, { headers: authHeaders })
+      ]);
+      setUsuarios(usuariosResponse.ok ? await usuariosResponse.json() : []);
+      setEventos(eventosResponse.ok ? await eventosResponse.json() : []);
+    } catch {
+      setUsuarios([]);
+      setEventos([]);
+    }
+  }
+
+  useEffect(() => {
+    cargar();
+  }, []);
+
+  function setField(field, value) {
+    setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  async function crearAdmin(event) {
+    event.preventDefault();
+    const response = await fetch(`${API_URL}/admin/usuarios/admin`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders },
+      body: JSON.stringify(form)
+    });
+
+    if (!response.ok) {
+      alert("No se pudo crear el administrador.");
+      return;
+    }
+
+    setForm({ nombre: "", email: "", password: "", rol: "ADMIN" });
+    cargar();
+  }
+
+  async function accionAdmin(path, method, mensajeError) {
+    const response = await fetch(`${API_URL}${path}`, { method, headers: authHeaders });
+    if (!response.ok) {
+      alert(mensajeError);
+      return;
+    }
+    cargar();
+  }
+
+  return (
+    <section className="screen">
+      <button className="back" onClick={onBack}>Volver</button>
+      <h2>Panel Admin</h2>
+      <p className="muted">Gestión interna de BAILEMOS.</p>
+
+      {esSuperAdmin && (
+        <form className="card stack" onSubmit={crearAdmin}>
+          <h3>Crear administrador restringido</h3>
+          <input value={form.nombre} onChange={(e) => setField("nombre", e.target.value)} placeholder="Nombre" required />
+          <input value={form.email} onChange={(e) => setField("email", e.target.value)} placeholder="Email" type="email" required />
+          <input value={form.password} onChange={(e) => setField("password", e.target.value)} placeholder="Contraseña" type="password" required />
+          <select value={form.rol} onChange={(e) => setField("rol", e.target.value)}>
+            <option value="ADMIN">Admin</option>
+            <option value="ORGANIZADOR">Organizador</option>
+            <option value="SALA">Sala</option>
+            <option value="ACADEMIA">Academia</option>
+          </select>
+          <button className="primary">Crear usuario administrativo</button>
+        </form>
+      )}
+
+      <section className="card">
+        <h3>Usuarios</h3>
+        {usuarios.map((usuario) => (
+          <div className="list-row with-action" key={usuario.id}>
+            <span>
+              <strong>{usuario.nombre}</strong>
+              <small>{usuario.email} - {usuario.rol} - {usuario.activo ? "Activo" : "Desactivado"}</small>
+            </span>
+            <div className="mini-actions">
+              {usuario.activo ? (
+                <button className="secondary compact" onClick={() => accionAdmin(`/admin/usuarios/${usuario.id}`, "DELETE", "No se pudo desactivar el usuario.")}>Desactivar</button>
+              ) : (
+                <button className="secondary compact" onClick={() => accionAdmin(`/admin/usuarios/${usuario.id}/activar`, "PUT", "No se pudo activar el usuario.")}>Activar</button>
+              )}
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <section className="card">
+        <h3>Eventos, fiestas y actividades</h3>
+        {eventos.length === 0 ? <p className="muted">No hay eventos.</p> : eventos.map((evento) => (
+          <div className="list-row with-action" key={evento.id}>
+            <span>
+              <strong>{evento.titulo}</strong>
+              <small>{evento.ciudadNombre} - {evento.lugarNombre || "Lugar pendiente"} - {evento.activo ? "Activo" : "Eliminado"}</small>
+            </span>
+            {evento.activo && (
+              <button className="secondary compact" onClick={() => accionAdmin(`/admin/eventos/${evento.id}`, "DELETE", "No se pudo eliminar el evento.")}>Eliminar</button>
+            )}
+          </div>
+        ))}
+      </section>
     </section>
   );
 }
