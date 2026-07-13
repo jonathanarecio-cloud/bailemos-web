@@ -147,6 +147,7 @@ function App() {
           onOpenGeneralChat={() => setScreen("general-chat")}
           onOpenPeople={() => setScreen("people")}
           onOpenMessages={() => setScreen("messages")}
+          onOpenProfile={() => setScreen("profile")}
           onOpenBailaCar={() => setScreen("bailacar")}
           onOpenPublish={() => setScreen("publish-event")}
           onOpenMagic={() => setScreen("magic")}
@@ -211,6 +212,22 @@ function App() {
               rol: chat.otroUsuarioRol
             });
             setScreen("private-chat");
+          }}
+        />
+      )}
+
+      {screen === "profile" && (
+        <ProfilePanel
+          session={session}
+          ciudades={ciudades}
+          authHeaders={authHeaders}
+          onBack={() => setScreen("home")}
+          onSaved={(perfil) => {
+            const updated = { ...session, nombre: perfil.nombre || session.nombre };
+            localStorage.setItem("bailemos_session", JSON.stringify(updated));
+            setSession(updated);
+            setNotice("Perfil actualizado.");
+            setScreen("home");
           }}
         />
       )}
@@ -396,6 +413,7 @@ function Home({
   onOpenGeneralChat,
   onOpenPeople,
   onOpenMessages,
+  onOpenProfile,
   onOpenBailaCar,
   onOpenPublish,
   onOpenMagic,
@@ -413,6 +431,7 @@ function Home({
         <button onClick={onOpenMagic}>Haz tu magia</button>
         <button onClick={onOpenPeople}>Gente</button>
         <button onClick={onOpenMessages}>Mensajes</button>
+        <button onClick={onOpenProfile}>Mi perfil</button>
         <button onClick={onOpenGeneralChat}>Chat general</button>
         <button onClick={onOpenRating}>Valorar</button>
       </div>
@@ -588,6 +607,138 @@ function MessagesPanel({ authHeaders, onBack, onOpen }) {
           ))
         )}
       </section>
+    </section>
+  );
+}
+
+function ProfilePanel({ session, ciudades, authHeaders, onBack, onSaved }) {
+  const [form, setForm] = useState({
+    nombreArtistico: "",
+    biografia: "",
+    ciudadId: "",
+    nivel: "PRINCIPIANTE",
+    estilos: [],
+    fotoUrl: "",
+    videoUrl: "",
+    instagram: "",
+    tiktok: "",
+    youtube: ""
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    async function cargarPerfil() {
+      try {
+        const response = await fetch(`${API_URL}/perfil/me`, { headers: authHeaders });
+        if (!response.ok) throw new Error();
+        const perfil = await response.json();
+        setForm({
+          nombreArtistico: perfil.nombreArtistico || perfil.nombre || session?.nombre || "",
+          biografia: perfil.biografia || "",
+          ciudadId: perfil.ciudadId || "",
+          nivel: perfil.nivel || "PRINCIPIANTE",
+          estilos: perfil.estilos || [],
+          fotoUrl: perfil.fotoUrl || "",
+          videoUrl: perfil.videoUrl || "",
+          instagram: perfil.instagram || "",
+          tiktok: perfil.tiktok || "",
+          youtube: perfil.youtube || ""
+        });
+      } catch {
+        alert("No se pudo cargar tu perfil.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    cargarPerfil();
+  }, []);
+
+  function setField(field, value) {
+    setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function toggleEstilo(estilo) {
+    setForm((current) => ({
+      ...current,
+      estilos: current.estilos.includes(estilo)
+        ? current.estilos.filter((item) => item !== estilo)
+        : [...current.estilos, estilo]
+    }));
+  }
+
+  async function guardar(event) {
+    event.preventDefault();
+    setSaving(true);
+    try {
+      const payload = {
+        ...form,
+        ciudadId: form.ciudadId ? Number(form.ciudadId) : null,
+        fotoUrl: form.fotoUrl || null,
+        videoUrl: form.videoUrl || null,
+        instagram: form.instagram || null,
+        tiktok: form.tiktok || null,
+        youtube: form.youtube || null
+      };
+
+      const response = await fetch(`${API_URL}/perfil/me`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) throw new Error();
+      onSaved(await response.json());
+    } catch {
+      alert("No se pudo guardar tu perfil.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <section className="screen">
+        <button className="back" onClick={onBack}>Volver</button>
+        <h2>Mi perfil</h2>
+        <p className="muted">Cargando perfil...</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="screen">
+      <button className="back" onClick={onBack}>Volver</button>
+      <h2>Mi perfil</h2>
+      <p className="muted">Edita como te ve la comunidad BAILEMOS.</p>
+
+      <form className="card stack" onSubmit={guardar}>
+        {form.fotoUrl && <img className="profile-preview" src={form.fotoUrl} alt="Foto de perfil" />}
+        <input value={form.nombreArtistico} onChange={(e) => setField("nombreArtistico", e.target.value)} placeholder="Nombre artistico" />
+        <textarea value={form.biografia} onChange={(e) => setField("biografia", e.target.value)} placeholder="Biografia" />
+        <select value={form.ciudadId} onChange={(e) => setField("ciudadId", e.target.value)}>
+          <option value="">Ciudad principal</option>
+          {ciudades.map((ciudad) => <option key={ciudad.id} value={ciudad.id}>{ciudad.nombre}</option>)}
+        </select>
+        <select value={form.nivel} onChange={(e) => setField("nivel", e.target.value)}>
+          <option value="PRINCIPIANTE">Principiante</option>
+          <option value="INTERMEDIO">Intermedio</option>
+          <option value="AVANZADO">Avanzado</option>
+          <option value="PROFESIONAL">Profesional</option>
+        </select>
+        <div className="chips">
+          {estilosDisponibles.map((estilo) => (
+            <button type="button" key={estilo} className={form.estilos.includes(estilo) ? "chip-active" : ""} onClick={() => toggleEstilo(estilo)}>{estilo}</button>
+          ))}
+        </div>
+        <input value={form.fotoUrl} onChange={(e) => setField("fotoUrl", e.target.value)} placeholder="URL de foto de perfil" />
+        <input value={form.videoUrl} onChange={(e) => setField("videoUrl", e.target.value)} placeholder="URL de video bailando" />
+        <input value={form.instagram} onChange={(e) => setField("instagram", e.target.value)} placeholder="Instagram" />
+        <input value={form.tiktok} onChange={(e) => setField("tiktok", e.target.value)} placeholder="TikTok" />
+        <input value={form.youtube} onChange={(e) => setField("youtube", e.target.value)} placeholder="YouTube" />
+        <button className="primary" disabled={saving}>{saving ? "Guardando..." : "Guardar perfil"}</button>
+      </form>
     </section>
   );
 }

@@ -172,6 +172,16 @@ h3 {
   border: 1px solid rgba(255, 117, 66, 0.55);
 }
 
+.profile-preview {
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 122, 49, 0.85);
+  background: rgba(255, 255, 255, 0.06);
+  margin: 0 auto 8px;
+}
+
 .accent {
   height: 3px;
   margin-bottom: 22px;
