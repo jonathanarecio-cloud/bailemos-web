@@ -193,11 +193,28 @@ function App() {
         <PeoplePanel
           authHeaders={authHeaders}
           onBack={() => setScreen("home")}
+          onOpenProfile={(persona) => {
+            setSelectedUser(persona);
+            setScreen("public-profile");
+          }}
           onMessage={(persona) => {
             setSelectedUser(persona);
             setScreen("private-chat");
           }}
           onRate={(usuarioId) => setScreen(`rating:${usuarioId}`)}
+        />
+      )}
+
+      {screen === "public-profile" && selectedUser && (
+        <PublicProfilePanel
+          user={selectedUser}
+          events={events}
+          authHeaders={authHeaders}
+          onBack={() => setScreen("people")}
+          onMessage={(persona) => {
+            setSelectedUser(persona);
+            setScreen("private-chat");
+          }}
         />
       )}
 
@@ -519,7 +536,7 @@ function CityPanel({ ciudadActiva, authHeaders, onBack, onRate, onMessage }) {
   );
 }
 
-function PeoplePanel({ authHeaders, onBack, onMessage, onRate }) {
+function PeoplePanel({ authHeaders, onBack, onOpenProfile, onMessage, onRate }) {
   const [personas, setPersonas] = useState([]);
   const [busqueda, setBusqueda] = useState("");
 
@@ -545,8 +562,8 @@ function PeoplePanel({ authHeaders, onBack, onMessage, onRate }) {
   return (
     <section className="screen">
       <button className="back" onClick={onBack}>Volver</button>
-      <h2>Gente BAILEMOS</h2>
-      <p className="muted">Busca bailadores, profesionales y amigos para chatear.</p>
+      <h2>Bailadores y profesionales</h2>
+      <p className="muted">{filtradas.length} personas registradas visibles para ti.</p>
       <input className="search" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar por nombre, ciudad o rol" />
       <section className="card">
         {filtradas.length === 0 ? (
@@ -554,17 +571,196 @@ function PeoplePanel({ authHeaders, onBack, onMessage, onRate }) {
         ) : (
           filtradas.map((persona) => (
             <div className="list-row with-action" key={persona.usuarioId}>
-              <span>
+              <button className="person-link" onClick={() => onOpenProfile(persona)}>
                 <strong>{persona.nombre}</strong>
                 <small>{persona.rol}{persona.ciudadNombre ? ` - ${persona.ciudadNombre}` : ""}</small>
-              </span>
+                <small>{persona.meGusta || 0} me gusta - {persona.recomendaciones || 0} recomendaciones</small>
+                {persona.bloqueadoPorMi && <small>Bloqueado por ti</small>}
+              </button>
               <div className="mini-actions">
-                <button className="primary compact" onClick={() => onMessage(persona)}>Mensaje</button>
+                <button className="primary compact" onClick={() => onOpenProfile(persona)}>Ver perfil</button>
                 <button className="secondary compact" onClick={() => onRate(persona.usuarioId)}>Valorar</button>
               </div>
             </div>
           ))
         )}
+      </section>
+    </section>
+  );
+}
+
+function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage }) {
+  const [perfil, setPerfil] = useState(null);
+  const [social, setSocial] = useState(null);
+  const [valoraciones, setValoraciones] = useState([]);
+  const [recomendaciones, setRecomendaciones] = useState([]);
+  const [comentarioValoracion, setComentarioValoracion] = useState("");
+  const [puntuacion, setPuntuacion] = useState(5);
+  const [comentarioRecomendacion, setComentarioRecomendacion] = useState("");
+  const [eventoRecomendado, setEventoRecomendado] = useState("");
+
+  async function cargarPerfil() {
+    try {
+      const [perfilResponse, socialResponse, valoracionesResponse, recomendacionesResponse] = await Promise.all([
+        fetch(`${API_URL}/perfil/${user.usuarioId}`, { headers: authHeaders }),
+        fetch(`${API_URL}/social/usuario/${user.usuarioId}/resumen`, { headers: authHeaders }),
+        fetch(`${API_URL}/valoraciones/usuario/${user.usuarioId}`, { headers: authHeaders }),
+        fetch(`${API_URL}/social/usuario/${user.usuarioId}/recomendaciones`, { headers: authHeaders })
+      ]);
+
+      setPerfil(perfilResponse.ok ? await perfilResponse.json() : null);
+      setSocial(socialResponse.ok ? await socialResponse.json() : null);
+      setValoraciones(valoracionesResponse.ok ? await valoracionesResponse.json() : []);
+      setRecomendaciones(recomendacionesResponse.ok ? await recomendacionesResponse.json() : []);
+    } catch {
+      setPerfil(null);
+      setSocial(null);
+      setValoraciones([]);
+      setRecomendaciones([]);
+    }
+  }
+
+  useEffect(() => {
+    cargarPerfil();
+  }, [user.usuarioId]);
+
+  async function accionSocial(path, method) {
+    const response = await fetch(`${API_URL}${path}`, {
+      method,
+      headers: { "Content-Type": "application/json", ...authHeaders }
+    });
+
+    if (!response.ok) {
+      alert("No se pudo completar la accion.");
+      return;
+    }
+
+    setSocial(await response.json());
+  }
+
+  async function guardarValoracion(event) {
+    event.preventDefault();
+    const response = await fetch(`${API_URL}/valoraciones`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders },
+      body: JSON.stringify({
+        evaluadoId: user.usuarioId,
+        puntuacion: Number(puntuacion),
+        comentario: comentarioValoracion
+      })
+    });
+
+    if (!response.ok) {
+      alert("No se pudo guardar la valoracion.");
+      return;
+    }
+
+    setComentarioValoracion("");
+    cargarPerfil();
+  }
+
+  async function guardarRecomendacion(event) {
+    event.preventDefault();
+    const response = await fetch(`${API_URL}/social/usuario/${user.usuarioId}/recomendar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders },
+      body: JSON.stringify({
+        comentario: comentarioRecomendacion,
+        eventoId: eventoRecomendado ? Number(eventoRecomendado) : null
+      })
+    });
+
+    if (!response.ok) {
+      alert("No se pudo guardar la recomendacion.");
+      return;
+    }
+
+    setComentarioRecomendacion("");
+    setEventoRecomendado("");
+    cargarPerfil();
+  }
+
+  const bloqueado = social?.bloqueadoPorMi || social?.meTieneBloqueado;
+  const nombre = perfil?.nombreArtistico || perfil?.nombre || user.nombre;
+
+  return (
+    <section className="screen">
+      <button className="back" onClick={onBack}>Volver</button>
+      <article className="card public-profile">
+        {perfil?.fotoUrl ? <img className="profile-preview" src={perfil.fotoUrl} alt={nombre} /> : <img className="profile-preview" src="/bailemos_logo.jpeg" alt={nombre} />}
+        <h2>{nombre}</h2>
+        <p className="muted">{perfil?.rol || user.rol}{perfil?.ciudadNombre ? ` - ${perfil.ciudadNombre}` : ""}</p>
+        {perfil?.biografia && <p>{perfil.biografia}</p>}
+        <div className="stats-row">
+          <span>{social?.meGusta || 0} me gusta</span>
+          <span>{social?.recomendaciones || 0} recomendaciones</span>
+          <span>{valoraciones.length} valoraciones</span>
+        </div>
+        {perfil?.estilos?.length > 0 && (
+          <div className="chips readonly">
+            {perfil.estilos.map((estilo) => <span key={estilo}>{estilo}</span>)}
+          </div>
+        )}
+      </article>
+
+      <div className="quick-grid">
+        <button className="primary" onClick={() => onMessage(user)} disabled={bloqueado}>Chatear</button>
+        <button onClick={() => accionSocial(`/social/usuario/${user.usuarioId}/me-gusta`, social?.meGustaMio ? "DELETE" : "POST")}>
+          {social?.meGustaMio ? "Quitar BAILEMOS!" : "BAILEMOS! me gusta"}
+        </button>
+        <button onClick={() => accionSocial(`/social/usuario/${user.usuarioId}/bloquear`, social?.bloqueadoPorMi ? "DELETE" : "POST")}>
+          {social?.bloqueadoPorMi ? "Desbloquear" : "Bloquear"}
+        </button>
+      </div>
+
+      {social?.meTieneBloqueado && <p className="notice-text">Esta persona te tiene bloqueado. No puedes contactar por chat.</p>}
+      {social?.bloqueadoPorMi && <p className="notice-text">Tienes bloqueada a esta persona. Desbloquea para volver a contactar.</p>}
+
+      <form className="card stack" onSubmit={guardarValoracion}>
+        <h3>Valorar a {nombre}</h3>
+        <select value={puntuacion} onChange={(event) => setPuntuacion(event.target.value)}>
+          <option value="5">5 - Excelente</option>
+          <option value="4">4 - Muy bien</option>
+          <option value="3">3 - Bien</option>
+          <option value="2">2 - Mejorable</option>
+          <option value="1">1 - Mala experiencia</option>
+        </select>
+        <textarea value={comentarioValoracion} onChange={(event) => setComentarioValoracion(event.target.value)} placeholder="Cuenta como fue bailar o trabajar con esta persona" />
+        <button className="primary">Guardar valoracion</button>
+      </form>
+
+      <form className="card stack" onSubmit={guardarRecomendacion}>
+        <h3>Recomendar</h3>
+        <textarea value={comentarioRecomendacion} onChange={(event) => setComentarioRecomendacion(event.target.value)} placeholder="Ejemplo: recomiendo bailar con esta persona, o recomiendo este evento/lugar al que voy" />
+        <select value={eventoRecomendado} onChange={(event) => setEventoRecomendado(event.target.value)}>
+          <option value="">Sin evento concreto</option>
+          {events.map((evento) => <option key={evento.id} value={evento.id}>{evento.titulo}</option>)}
+        </select>
+        <button className="primary">Guardar recomendacion</button>
+      </form>
+
+      <section className="card">
+        <h3>Valoraciones visibles</h3>
+        {valoraciones.length === 0 ? <p className="muted">Aun no hay valoraciones.</p> : valoraciones.map((item) => (
+          <div className="list-row" key={item.id}>
+            <strong>{item.puntuacion}/5 - {item.autorNombre}</strong>
+            <span>{item.comentario || "Sin comentario"}</span>
+          </div>
+        ))}
+      </section>
+
+      <section className="card">
+        <h3>Recomendaciones visibles</h3>
+        {recomendaciones.length === 0 ? <p className="muted">Aun no hay recomendaciones.</p> : recomendaciones.map((item) => {
+          const evento = events.find((event) => Number(event.id) === Number(item.eventoId));
+          return (
+            <div className="list-row" key={item.id}>
+              <strong>{item.autorNombre}</strong>
+              <span>{item.comentario || "Recomienda a esta persona"}</span>
+              {evento && <span>Evento recomendado: {evento.titulo}</span>}
+            </div>
+          );
+        })}
       </section>
     </section>
   );
@@ -746,12 +942,19 @@ function ProfilePanel({ session, ciudades, authHeaders, onBack, onSaved }) {
 function ChatPanel({ title, endpointGet, endpointPost, authHeaders, onBack, embedded = false }) {
   const [mensajes, setMensajes] = useState([]);
   const [mensaje, setMensaje] = useState("");
+  const [blocked, setBlocked] = useState(false);
 
   async function cargar() {
     if (!endpointGet) return;
     try {
       const response = await fetch(`${API_URL}${endpointGet}`, { headers: authHeaders });
+      if (response.status === 403) {
+        setBlocked(true);
+        setMensajes([]);
+        return;
+      }
       if (!response.ok) throw new Error();
+      setBlocked(false);
       setMensajes(await response.json());
     } catch {
       setMensajes([]);
@@ -766,11 +969,23 @@ function ChatPanel({ title, endpointGet, endpointPost, authHeaders, onBack, embe
     event.preventDefault();
     if (!mensaje.trim() || !endpointPost) return;
 
-    await fetch(`${API_URL}${endpointPost}`, {
+    const response = await fetch(`${API_URL}${endpointPost}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders },
       body: JSON.stringify({ mensaje: mensaje.trim() })
     });
+
+    if (response.status === 403) {
+      setBlocked(true);
+      alert("No se puede enviar el mensaje porque hay un bloqueo activo.");
+      return;
+    }
+
+    if (!response.ok) {
+      alert("No se pudo enviar el mensaje.");
+      return;
+    }
+
     setMensaje("");
     cargar();
   }
@@ -780,7 +995,9 @@ function ChatPanel({ title, endpointGet, endpointPost, authHeaders, onBack, embe
       {!embedded && <button className="back" onClick={onBack}>Volver</button>}
       <h2>{title}</h2>
       <div className="chat-box">
-        {mensajes.length === 0 ? (
+        {blocked ? (
+          <p className="muted">No se puede contactar porque hay un bloqueo activo.</p>
+        ) : mensajes.length === 0 ? (
           <p className="muted">Todavia no hay mensajes. Escribe el primero.</p>
         ) : (
           mensajes.map((item) => (
@@ -792,8 +1009,8 @@ function ChatPanel({ title, endpointGet, endpointPost, authHeaders, onBack, embe
         )}
       </div>
       <form className="composer" onSubmit={enviar}>
-        <input value={mensaje} onChange={(e) => setMensaje(e.target.value)} placeholder="Escribe un mensaje" />
-        <button className="primary">Enviar</button>
+        <input value={mensaje} onChange={(e) => setMensaje(e.target.value)} placeholder="Escribe un mensaje" disabled={blocked} />
+        <button className="primary" disabled={blocked}>Enviar</button>
       </form>
     </section>
   );
