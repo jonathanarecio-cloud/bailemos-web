@@ -12,6 +12,8 @@ const ciudadesIniciales = [
   { id: 5, nombre: "Sevilla" }
 ];
 
+const estilosDisponibles = ["BACHATA", "SALSA", "KIZOMBA", "MERENGUE", "URBANO", "OTRO"];
+
 function App() {
   const [session, setSession] = useState(() => {
     const saved = localStorage.getItem("bailemos_session");
@@ -36,9 +38,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (session) {
-      cargarInicio();
-    }
+    if (session) cargarInicio();
   }, [session]);
 
   async function api(path, options = {}) {
@@ -50,34 +50,26 @@ function App() {
       }
     });
 
-    if (response.status === 204) {
-      return null;
-    }
-
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}`);
-    }
-
+    if (response.status === 204) return null;
+    if (!response.ok) throw new Error(`Error ${response.status}`);
     return response.json();
   }
 
   async function cargarInicio() {
     setLoading(true);
     try {
-      const [eventosData, ciudadesData] = await Promise.all([
-        api("/eventos"),
-        api("/ciudades")
-      ]);
+      const [eventosData, ciudadesData] = await Promise.all([api("/eventos"), api("/ciudades")]);
       setEvents(eventosData || []);
       setEvent(eventosData?.[0] || null);
       setCiudades(ciudadesData?.length ? ciudadesData : ciudadesIniciales);
+
       try {
         const activa = await api("/usuarios/ciudad-activa/me", { headers: authHeaders });
         setCiudadActiva(activa);
       } catch {
         setCiudadActiva(null);
       }
-    } catch (error) {
+    } catch {
       setNotice("No se pudieron cargar los datos. Prueba de nuevo.");
     } finally {
       setLoading(false);
@@ -98,12 +90,13 @@ function App() {
   }
 
   async function marcarVoy() {
-    if (!event) return;
+    if (!event) {
+      setNotice("Primero publica o selecciona un evento.");
+      return;
+    }
+
     try {
-      await api(`/eventos/${event.id}/voy`, {
-        method: "POST",
-        headers: authHeaders
-      });
+      await api(`/eventos/${event.id}/voy`, { method: "POST", headers: authHeaders });
       setNotice("Ya apareces como asistente.");
       cargarInicio();
     } catch {
@@ -143,24 +136,37 @@ function App() {
 
       {screen === "home" && (
         <Home
-          session={session}
           loading={loading}
           event={event}
           events={events}
           ciudades={ciudades}
           ciudadActiva={ciudadActiva}
           onVoy={marcarVoy}
-          onOpenChat={() => setScreen("event-chat")}
+          onOpenChat={() => setScreen(event ? "event-chat" : "general-chat")}
+          onOpenGeneralChat={() => setScreen("general-chat")}
           onOpenBailaCar={() => setScreen("bailacar")}
+          onOpenPublish={() => setScreen("publish-event")}
+          onOpenMagic={() => setScreen("magic")}
+          onOpenRating={() => setScreen("rating")}
           onCiudad={marcarCiudad}
         />
       )}
 
       {screen === "event-chat" && (
         <ChatPanel
-          title={event ? `Chat: ${event.titulo}` : "Chat del evento"}
-          endpointGet={event ? `/chat/evento/${event.id}` : null}
-          endpointPost={event ? `/chat/evento/${event.id}/mensajes` : null}
+          title={event ? `Chat: ${event.titulo}` : "Chat general"}
+          endpointGet={event ? `/chat/evento/${event.id}` : "/chat/general"}
+          endpointPost={event ? `/chat/evento/${event.id}/mensajes` : "/chat/general/mensajes"}
+          authHeaders={authHeaders}
+          onBack={() => setScreen("home")}
+        />
+      )}
+
+      {screen === "general-chat" && (
+        <ChatPanel
+          title="Chat general BAILEMOS"
+          endpointGet="/chat/general"
+          endpointPost="/chat/general/mensajes"
           authHeaders={authHeaders}
           onBack={() => setScreen("home")}
         />
@@ -171,11 +177,48 @@ function App() {
           ciudadActiva={ciudadActiva}
           authHeaders={authHeaders}
           onBack={() => setScreen("home")}
+          onRate={(usuarioId) => setScreen(`rating:${usuarioId}`)}
         />
       )}
 
       {screen === "bailacar" && (
-        <BailaCar onBack={() => setScreen("home")} event={event} />
+        <BailaCar onBack={() => setScreen("home")} event={event} authHeaders={authHeaders} />
+      )}
+
+      {screen === "publish-event" && (
+        <PublishEvent
+          ciudades={ciudades}
+          authHeaders={authHeaders}
+          onBack={() => setScreen("home")}
+          onCreated={(created) => {
+            setNotice("Evento publicado.");
+            setEvent(created);
+            cargarInicio();
+            setScreen("home");
+          }}
+        />
+      )}
+
+      {screen === "magic" && (
+        <MagicPanel
+          events={events}
+          ciudades={ciudades}
+          ciudadActiva={ciudadActiva}
+          onBack={() => setScreen("home")}
+        />
+      )}
+
+      {screen === "rating" && (
+        <RatingPanel session={session} authHeaders={authHeaders} onBack={() => setScreen("home")} />
+      )}
+
+      {screen.startsWith("rating:") && (
+        <RatingPanel
+          session={session}
+          authHeaders={authHeaders}
+          defaultUserId={Number(screen.split(":")[1])}
+          onBack={() => setScreen("city")}
+        />
       )}
     </main>
   );
@@ -298,7 +341,21 @@ function Header({ session, onLogout }) {
   );
 }
 
-function Home({ loading, event, events, ciudades, ciudadActiva, onVoy, onOpenChat, onOpenBailaCar, onCiudad }) {
+function Home({
+  loading,
+  event,
+  events,
+  ciudades,
+  ciudadActiva,
+  onVoy,
+  onOpenChat,
+  onOpenGeneralChat,
+  onOpenBailaCar,
+  onOpenPublish,
+  onOpenMagic,
+  onOpenRating,
+  onCiudad
+}) {
   return (
     <section className="screen">
       <div className="accent" />
@@ -306,18 +363,20 @@ function Home({ loading, event, events, ciudades, ciudadActiva, onVoy, onOpenCha
       <input className="search" placeholder="Buscar eventos, ciudades o salas" />
 
       <div className="quick-grid">
-        <button>Mi calendario</button>
-        <button>Mi valoracion</button>
+        <button onClick={onOpenPublish}>Publicar evento</button>
+        <button onClick={onOpenMagic}>Haz tu magia</button>
+        <button onClick={onOpenGeneralChat}>Chat general</button>
+        <button onClick={onOpenRating}>Valorar</button>
       </div>
 
       <article className="card feature-card">
         <small>{event?.ciudadNombre || "BAILEMOS!"}</small>
         <h3>{loading ? "Cargando eventos..." : event?.titulo || "No hay eventos publicados"}</h3>
-        <p>{event ? `${event.lugarNombre || "Lugar pendiente"} · Van ${event.asistentes || 0} personas` : "Cuando haya eventos reales, apareceran aqui."}</p>
+        <p>{event ? `${event.lugarNombre || "Lugar pendiente"} - Van ${event.asistentes || 0} personas` : "Puedes publicar un evento o entrar al chat general."}</p>
         <div className="actions">
           <button className="primary" onClick={onVoy} disabled={!event}>Voy</button>
-          <button className="secondary" onClick={onOpenChat} disabled={!event}>Chat</button>
-          <button className="secondary" onClick={onOpenBailaCar} disabled={!event}>BailaCar</button>
+          <button className="secondary" onClick={onOpenChat}>{event ? "Chat evento" : "Chat general"}</button>
+          <button className="secondary" onClick={onOpenBailaCar}>BailaCar</button>
         </div>
       </article>
 
@@ -334,10 +393,11 @@ function Home({ loading, event, events, ciudades, ciudadActiva, onVoy, onOpenCha
       <section className="card">
         <h3>Eventos disponibles</h3>
         <div className="list">
+          {events.length === 0 && <p className="muted">Aun no hay eventos. Publica el primero.</p>}
           {events.map((item) => (
             <div key={item.id} className="list-row">
               <strong>{item.titulo}</strong>
-              <span>{item.ciudadNombre} · {item.lugarNombre}</span>
+              <span>{item.ciudadNombre} - {item.lugarNombre}</span>
             </div>
           ))}
         </div>
@@ -346,13 +406,13 @@ function Home({ loading, event, events, ciudades, ciudadActiva, onVoy, onOpenCha
   );
 }
 
-function CityPanel({ ciudadActiva, authHeaders, onBack }) {
+function CityPanel({ ciudadActiva, authHeaders, onBack, onRate }) {
   const ciudadId = ciudadActiva?.ciudadId;
   const [personas, setPersonas] = useState([]);
 
   useEffect(() => {
     if (!ciudadId) return;
-    fetch(`${API_URL}/usuarios/ciudad/${ciudadId}`)
+    fetch(`${API_URL}/usuarios/ciudad/${ciudadId}`, { headers: authHeaders })
       .then((response) => response.json())
       .then(setPersonas)
       .catch(() => setPersonas([]));
@@ -368,9 +428,12 @@ function CityPanel({ ciudadActiva, authHeaders, onBack }) {
           <p>Todavia no hay personas conectadas.</p>
         ) : (
           personas.map((persona) => (
-            <div className="list-row" key={persona.usuarioId}>
-              <strong>{persona.nombre}</strong>
-              <span>{persona.rol}</span>
+            <div className="list-row with-action" key={persona.usuarioId}>
+              <span>
+                <strong>{persona.nombre}</strong>
+                <small>{persona.rol}</small>
+              </span>
+              <button className="secondary compact" onClick={() => onRate(persona.usuarioId)}>Valorar</button>
             </div>
           ))
         )}
@@ -378,8 +441,8 @@ function CityPanel({ ciudadActiva, authHeaders, onBack }) {
       <ChatPanel
         embedded
         title={`Chat de ${ciudadActiva?.ciudadNombre || "ciudad"}`}
-        endpointGet={ciudadId ? `/chat/ciudad/${ciudadId}` : null}
-        endpointPost={ciudadId ? `/chat/ciudad/${ciudadId}/mensajes` : null}
+        endpointGet={ciudadId ? `/chat/ciudad/${ciudadId}` : "/chat/general"}
+        endpointPost={ciudadId ? `/chat/ciudad/${ciudadId}/mensajes` : "/chat/general/mensajes"}
         authHeaders={authHeaders}
       />
     </section>
@@ -393,7 +456,8 @@ function ChatPanel({ title, endpointGet, endpointPost, authHeaders, onBack, embe
   async function cargar() {
     if (!endpointGet) return;
     try {
-      const response = await fetch(`${API_URL}${endpointGet}`);
+      const response = await fetch(`${API_URL}${endpointGet}`, { headers: authHeaders });
+      if (!response.ok) throw new Error();
       setMensajes(await response.json());
     } catch {
       setMensajes([]);
@@ -423,7 +487,7 @@ function ChatPanel({ title, endpointGet, endpointPost, authHeaders, onBack, embe
       <h2>{title}</h2>
       <div className="chat-box">
         {mensajes.length === 0 ? (
-          <p className="muted">Todavia no hay mensajes.</p>
+          <p className="muted">Todavia no hay mensajes. Escribe el primero.</p>
         ) : (
           mensajes.map((item) => (
             <div className="message" key={item.id}>
@@ -441,32 +505,59 @@ function ChatPanel({ title, endpointGet, endpointPost, authHeaders, onBack, embe
   );
 }
 
-function BailaCar({ onBack, event }) {
-  const [tipo, setTipo] = useState("Busco coche");
+function BailaCar({ onBack, event, authHeaders }) {
+  const [tipo, setTipo] = useState("BUSCO_COCHE");
   const [salida, setSalida] = useState("");
   const [hora, setHora] = useState("");
   const [plazas, setPlazas] = useState("");
   const [comentario, setComentario] = useState("");
-  const [publicado, setPublicado] = useState(null);
+  const [viajes, setViajes] = useState([]);
 
-  function publicar(eventSubmit) {
+  async function cargarViajes() {
+    const query = event?.id ? `?eventoId=${event.id}` : "";
+    try {
+      const response = await fetch(`${API_URL}/bailacar${query}`, { headers: authHeaders });
+      if (!response.ok) throw new Error();
+      setViajes(await response.json());
+    } catch {
+      setViajes([]);
+    }
+  }
+
+  useEffect(() => {
+    cargarViajes();
+  }, [event?.id]);
+
+  async function publicar(eventSubmit) {
     eventSubmit.preventDefault();
-    setPublicado({ tipo, salida, hora, plazas, comentario });
+    await fetch(`${API_URL}/bailacar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders },
+      body: JSON.stringify({
+        eventoId: event?.id || null,
+        tipo,
+        ciudadSalida: salida,
+        horaSalida: hora,
+        plazas: plazas ? Number(plazas) : null,
+        comentario
+      })
+    });
     setSalida("");
     setHora("");
     setPlazas("");
     setComentario("");
+    cargarViajes();
   }
 
   return (
     <section className="screen">
       <button className="back" onClick={onBack}>Volver</button>
       <h2>BailaCar</h2>
-      <p className="muted">Comparte trayecto para {event?.titulo || "el evento"}.</p>
+      <p className="muted">Comparte trayecto para {event?.titulo || "la comunidad BAILEMOS"}.</p>
       <form className="card stack" onSubmit={publicar}>
         <div className="segmented">
-          <button type="button" className={tipo === "Busco coche" ? "active" : ""} onClick={() => setTipo("Busco coche")}>Busco coche</button>
-          <button type="button" className={tipo === "Ofrezco plazas" ? "active" : ""} onClick={() => setTipo("Ofrezco plazas")}>Ofrezco plazas</button>
+          <button type="button" className={tipo === "BUSCO_COCHE" ? "active" : ""} onClick={() => setTipo("BUSCO_COCHE")}>Busco coche</button>
+          <button type="button" className={tipo === "OFREZCO_PLAZAS" ? "active" : ""} onClick={() => setTipo("OFREZCO_PLAZAS")}>Ofrezco plazas</button>
         </div>
         <input value={salida} onChange={(e) => setSalida(e.target.value)} placeholder="Ciudad o zona de salida" required />
         <input value={hora} onChange={(e) => setHora(e.target.value)} placeholder="Hora aproximada" required />
@@ -474,15 +565,198 @@ function BailaCar({ onBack, event }) {
         <textarea value={comentario} onChange={(e) => setComentario(e.target.value)} placeholder="Comentario, ruta o condiciones" />
         <button className="primary">Publicar en BailaCar</button>
       </form>
-      {publicado && (
-        <article className="card">
-          <h3>{publicado.tipo}</h3>
-          <p>Salida: {publicado.salida}</p>
-          <p>Hora: {publicado.hora}</p>
-          <p>Plazas: {publicado.plazas || "Pendiente"}</p>
-          <p>{publicado.comentario || "Sin comentario"}</p>
-        </article>
-      )}
+
+      <section className="card">
+        <h3>Viajes publicados</h3>
+        {viajes.length === 0 ? <p className="muted">Aun no hay viajes publicados.</p> : viajes.map((viaje) => (
+          <div className="list-row" key={viaje.id}>
+            <strong>{viaje.tipo === "OFREZCO_PLAZAS" ? "Ofrece plazas" : "Busca coche"} - {viaje.nombreUsuario}</strong>
+            <span>{viaje.ciudadSalida} - {viaje.horaSalida} - Plazas: {viaje.plazas || "Pendiente"}</span>
+            {viaje.comentario && <span>{viaje.comentario}</span>}
+          </div>
+        ))}
+      </section>
+    </section>
+  );
+}
+
+function PublishEvent({ ciudades, authHeaders, onBack, onCreated }) {
+  const [form, setForm] = useState({
+    titulo: "",
+    descripcion: "",
+    ciudadId: ciudades[0]?.id || 1,
+    lugarNombre: "",
+    direccion: "",
+    fechaInicio: "",
+    fechaFin: "",
+    precio: "",
+    cartelUrl: "",
+    estilos: ["BACHATA"]
+  });
+
+  function setField(field, value) {
+    setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function toggleEstilo(estilo) {
+    setForm((current) => ({
+      ...current,
+      estilos: current.estilos.includes(estilo)
+        ? current.estilos.filter((item) => item !== estilo)
+        : [...current.estilos, estilo]
+    }));
+  }
+
+  async function submit(event) {
+    event.preventDefault();
+    const payload = {
+      ...form,
+      ciudadId: Number(form.ciudadId),
+      fechaInicio: form.fechaInicio,
+      fechaFin: form.fechaFin || null,
+      precio: form.precio ? Number(form.precio) : null,
+      latitud: null,
+      longitud: null,
+      cartelUrl: form.cartelUrl || null
+    };
+
+    const response = await fetch(`${API_URL}/eventos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      alert("No se pudo publicar el evento.");
+      return;
+    }
+
+    onCreated(await response.json());
+  }
+
+  return (
+    <section className="screen">
+      <button className="back" onClick={onBack}>Volver</button>
+      <h2>Publicar evento</h2>
+      <form className="card stack" onSubmit={submit}>
+        <input value={form.titulo} onChange={(e) => setField("titulo", e.target.value)} placeholder="Nombre del evento" required />
+        <select value={form.ciudadId} onChange={(e) => setField("ciudadId", e.target.value)}>
+          {ciudades.map((ciudad) => <option key={ciudad.id} value={ciudad.id}>{ciudad.nombre}</option>)}
+        </select>
+        <input value={form.lugarNombre} onChange={(e) => setField("lugarNombre", e.target.value)} placeholder="Sala, disco o academia" />
+        <input value={form.direccion} onChange={(e) => setField("direccion", e.target.value)} placeholder="Direccion" />
+        <input value={form.fechaInicio} onChange={(e) => setField("fechaInicio", e.target.value)} type="datetime-local" required />
+        <input value={form.fechaFin} onChange={(e) => setField("fechaFin", e.target.value)} type="datetime-local" />
+        <input value={form.precio} onChange={(e) => setField("precio", e.target.value)} placeholder="Precio" inputMode="decimal" />
+        <input value={form.cartelUrl} onChange={(e) => setField("cartelUrl", e.target.value)} placeholder="URL del cartel o Instagram" />
+        <textarea value={form.descripcion} onChange={(e) => setField("descripcion", e.target.value)} placeholder="Descripcion" />
+        <div className="chips">
+          {estilosDisponibles.map((estilo) => (
+            <button type="button" key={estilo} className={form.estilos.includes(estilo) ? "chip-active" : ""} onClick={() => toggleEstilo(estilo)}>{estilo}</button>
+          ))}
+        </div>
+        <button className="primary">Publicar evento</button>
+      </form>
+    </section>
+  );
+}
+
+function MagicPanel({ events, ciudades, ciudadActiva, onBack }) {
+  const [ciudadId, setCiudadId] = useState(ciudadActiva?.ciudadId || ciudades[0]?.id || 1);
+  const [estilo, setEstilo] = useState("BACHATA");
+  const eventosCiudad = events.filter((event) => Number(event.ciudadId) === Number(ciudadId));
+  const elegido = eventosCiudad.find((event) => event.estilos?.includes(estilo)) || eventosCiudad[0] || events[0];
+  const ciudad = ciudades.find((item) => Number(item.id) === Number(ciudadId));
+
+  return (
+    <section className="screen">
+      <button className="back" onClick={onBack}>Volver</button>
+      <h2>Haz tu magia</h2>
+      <p className="muted">BAILEMOS te propone un plan rapido segun ciudad y estilo.</p>
+      <div className="card stack">
+        <select value={ciudadId} onChange={(e) => setCiudadId(e.target.value)}>
+          {ciudades.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
+        </select>
+        <select value={estilo} onChange={(e) => setEstilo(e.target.value)}>
+          {estilosDisponibles.map((item) => <option key={item} value={item}>{item}</option>)}
+        </select>
+      </div>
+      <article className="card feature-card">
+        <small>{ciudad?.nombre || "BAILEMOS"}</small>
+        <h3>{elegido ? elegido.titulo : "Publica el primer evento de esta ciudad"}</h3>
+        <p>{elegido ? `${elegido.lugarNombre || "Lugar pendiente"} - ${elegido.fechaInicio || ""}` : "Cuando haya eventos, aqui aparecera una recomendacion automatica."}</p>
+      </article>
+    </section>
+  );
+}
+
+function RatingPanel({ session, authHeaders, defaultUserId, onBack }) {
+  const [evaluadoId, setEvaluadoId] = useState(defaultUserId || session?.usuarioId || "");
+  const [puntuacion, setPuntuacion] = useState(5);
+  const [comentario, setComentario] = useState("");
+  const [valoraciones, setValoraciones] = useState([]);
+
+  async function cargar() {
+    if (!evaluadoId) return;
+    try {
+      const response = await fetch(`${API_URL}/valoraciones/usuario/${evaluadoId}`, { headers: authHeaders });
+      if (!response.ok) throw new Error();
+      setValoraciones(await response.json());
+    } catch {
+      setValoraciones([]);
+    }
+  }
+
+  useEffect(() => {
+    cargar();
+  }, [evaluadoId]);
+
+  async function enviar(event) {
+    event.preventDefault();
+    const response = await fetch(`${API_URL}/valoraciones`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders },
+      body: JSON.stringify({
+        evaluadoId: Number(evaluadoId),
+        puntuacion: Number(puntuacion),
+        comentario
+      })
+    });
+
+    if (!response.ok) {
+      alert("No se pudo guardar la valoracion.");
+      return;
+    }
+
+    setComentario("");
+    cargar();
+  }
+
+  return (
+    <section className="screen">
+      <button className="back" onClick={onBack}>Volver</button>
+      <h2>Valoraciones</h2>
+      <form className="card stack" onSubmit={enviar}>
+        <input value={evaluadoId} onChange={(e) => setEvaluadoId(e.target.value)} placeholder="ID del bailador/profesional" inputMode="numeric" required />
+        <select value={puntuacion} onChange={(e) => setPuntuacion(e.target.value)}>
+          <option value="5">5 - Excelente</option>
+          <option value="4">4 - Muy bien</option>
+          <option value="3">3 - Bien</option>
+          <option value="2">2 - Mejorable</option>
+          <option value="1">1 - Mala experiencia</option>
+        </select>
+        <textarea value={comentario} onChange={(e) => setComentario(e.target.value)} placeholder="Cuenta como fue bailar o trabajar con esta persona" />
+        <button className="primary">Guardar valoracion</button>
+      </form>
+      <section className="card">
+        <h3>Valoraciones recibidas</h3>
+        {valoraciones.length === 0 ? <p className="muted">Aun no hay valoraciones.</p> : valoraciones.map((item) => (
+          <div className="list-row" key={item.id}>
+            <strong>{item.puntuacion}/5 - {item.autorNombre}</strong>
+            <span>{item.comentario || "Sin comentario"}</span>
+          </div>
+        ))}
+      </section>
     </section>
   );
 }
