@@ -13,6 +13,7 @@ const ciudadesIniciales = [
 ];
 
 const estilosDisponibles = ["BACHATA", "SALSA", "KIZOMBA", "MERENGUE", "URBANO", "OTRO"];
+const estilosEvento = ["BACHATA", "SALSA", "KIZOMBA", "OTRO"];
 
 function App() {
   const [session, setSession] = useState(() => {
@@ -153,6 +154,7 @@ function App() {
           onOpenMagic={() => setScreen("magic")}
           onOpenRating={() => setScreen("rating")}
           onCiudad={marcarCiudad}
+          authHeaders={authHeaders}
         />
       )}
 
@@ -435,7 +437,8 @@ function Home({
   onOpenPublish,
   onOpenMagic,
   onOpenRating,
-  onCiudad
+  onCiudad,
+  authHeaders
 }) {
   return (
     <section className="screen">
@@ -463,6 +466,8 @@ function Home({
           <button className="secondary" onClick={onOpenBailaCar}>BailaCar</button>
         </div>
       </article>
+
+      {event && <EventAttendees event={event} authHeaders={authHeaders} />}
 
       <section className="card">
         <h3>Estoy en una ciudad</h3>
@@ -515,7 +520,7 @@ function CityPanel({ ciudadActiva, authHeaders, onBack, onRate, onMessage }) {
             <div className="list-row with-action" key={persona.usuarioId}>
               <span>
                 <strong>{persona.nombre}</strong>
-                <small>{persona.rol}</small>
+                <small>{persona.rol}{persona.amigoMio ? " - Amigo" : ""}</small>
               </span>
               <div className="mini-actions">
                 <button className="secondary compact" onClick={() => onMessage(persona)}>Mensaje</button>
@@ -532,6 +537,34 @@ function CityPanel({ ciudadActiva, authHeaders, onBack, onRate, onMessage }) {
         endpointPost={ciudadId ? `/chat/ciudad/${ciudadId}/mensajes` : "/chat/general/mensajes"}
         authHeaders={authHeaders}
       />
+    </section>
+  );
+}
+
+function EventAttendees({ event, authHeaders }) {
+  const [asistentes, setAsistentes] = useState([]);
+
+  useEffect(() => {
+    if (!event?.id) return;
+    fetch(`${API_URL}/eventos/${event.id}/asistentes`, { headers: authHeaders })
+      .then((response) => response.ok ? response.json() : [])
+      .then(setAsistentes)
+      .catch(() => setAsistentes([]));
+  }, [event?.id]);
+
+  return (
+    <section className="card">
+      <h3>Quién va</h3>
+      {asistentes.length === 0 ? (
+        <p className="muted">Aún no hay asistentes confirmados.</p>
+      ) : (
+        asistentes.map((persona) => (
+          <div className="list-row" key={persona.usuarioId}>
+            <strong>{persona.nombre} {persona.amigoMio && <span className="friend-badge">Amigo</span>}</strong>
+            <span>{persona.rol}</span>
+          </div>
+        ))
+      )}
     </section>
   );
 }
@@ -575,6 +608,7 @@ function PeoplePanel({ authHeaders, onBack, onOpenProfile, onMessage, onRate }) 
                 <strong>{persona.nombre}</strong>
                 <small>{persona.rol}{persona.ciudadNombre ? ` - ${persona.ciudadNombre}` : ""}</small>
                 <small>{persona.meGusta || 0} me gusta - {persona.recomendaciones || 0} recomendaciones</small>
+                {persona.amigoMio && <small>Amigo</small>}
                 {persona.bloqueadoPorMi && <small>Bloqueado por ti</small>}
               </button>
               <div className="mini-actions">
@@ -687,7 +721,7 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage }) {
     <section className="screen">
       <button className="back" onClick={onBack}>Volver</button>
       <article className="card public-profile">
-        {perfil?.fotoUrl ? <img className="profile-preview" src={perfil.fotoUrl} alt={nombre} /> : <img className="profile-preview" src="/bailemos_logo.jpeg" alt={nombre} />}
+        {(perfil?.fotoData || perfil?.fotoUrl) ? <img className="profile-preview" src={perfil.fotoData || perfil.fotoUrl} alt={nombre} /> : <img className="profile-preview" src="/bailemos_logo.jpeg" alt={nombre} />}
         <h2>{nombre}</h2>
         <p className="muted">{perfil?.rol || user.rol}{perfil?.ciudadNombre ? ` - ${perfil.ciudadNombre}` : ""}</p>
         {perfil?.biografia && <p>{perfil.biografia}</p>}
@@ -707,6 +741,9 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage }) {
         <button className="primary" onClick={() => onMessage(user)} disabled={bloqueado}>Chatear</button>
         <button onClick={() => accionSocial(`/social/usuario/${user.usuarioId}/me-gusta`, social?.meGustaMio ? "DELETE" : "POST")}>
           {social?.meGustaMio ? "Quitar BAILEMOS!" : "BAILEMOS! me gusta"}
+        </button>
+        <button onClick={() => accionSocial(`/social/usuario/${user.usuarioId}/amigo`, social?.amigoMio ? "DELETE" : "POST")}>
+          {social?.amigoMio ? "Quitar amigo" : "Añadir amigo"}
         </button>
         <button onClick={() => accionSocial(`/social/usuario/${user.usuarioId}/bloquear`, social?.bloqueadoPorMi ? "DELETE" : "POST")}>
           {social?.bloqueadoPorMi ? "Desbloquear" : "Bloquear"}
@@ -815,6 +852,7 @@ function ProfilePanel({ session, ciudades, authHeaders, onBack, onSaved }) {
     nivel: "PRINCIPIANTE",
     estilos: [],
     fotoUrl: "",
+    fotoData: "",
     videoUrl: "",
     instagram: "",
     tiktok: "",
@@ -836,6 +874,7 @@ function ProfilePanel({ session, ciudades, authHeaders, onBack, onSaved }) {
           nivel: perfil.nivel || "PRINCIPIANTE",
           estilos: perfil.estilos || [],
           fotoUrl: perfil.fotoUrl || "",
+          fotoData: perfil.fotoData || "",
           videoUrl: perfil.videoUrl || "",
           instagram: perfil.instagram || "",
           tiktok: perfil.tiktok || "",
@@ -864,6 +903,25 @@ function ProfilePanel({ session, ciudades, authHeaders, onBack, onSaved }) {
     }));
   }
 
+  function cargarFotoArchivo(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!["image/jpeg", "image/png"].includes(file.type)) {
+      alert("La foto debe ser JPG o PNG.");
+      return;
+    }
+
+    if (file.size > 700 * 1024) {
+      alert("La foto es demasiado grande. Usa una imagen de menos de 700 KB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => setField("fotoData", reader.result);
+    reader.readAsDataURL(file);
+  }
+
   async function guardar(event) {
     event.preventDefault();
     setSaving(true);
@@ -872,6 +930,7 @@ function ProfilePanel({ session, ciudades, authHeaders, onBack, onSaved }) {
         ...form,
         ciudadId: form.ciudadId ? Number(form.ciudadId) : null,
         fotoUrl: form.fotoUrl || null,
+        fotoData: form.fotoData || null,
         videoUrl: form.videoUrl || null,
         instagram: form.instagram || null,
         tiktok: form.tiktok || null,
@@ -910,7 +969,7 @@ function ProfilePanel({ session, ciudades, authHeaders, onBack, onSaved }) {
       <p className="muted">Edita como te ve la comunidad BAILEMOS.</p>
 
       <form className="card stack" onSubmit={guardar}>
-        {form.fotoUrl && <img className="profile-preview" src={form.fotoUrl} alt="Foto de perfil" />}
+        {(form.fotoData || form.fotoUrl) && <img className="profile-preview" src={form.fotoData || form.fotoUrl} alt="Foto de perfil" />}
         <input value={form.nombreArtistico} onChange={(e) => setField("nombreArtistico", e.target.value)} placeholder="Nombre artístico" />
         <textarea value={form.biografia} onChange={(e) => setField("biografia", e.target.value)} placeholder="Biografía" />
         <select value={form.ciudadId} onChange={(e) => setField("ciudadId", e.target.value)}>
@@ -929,6 +988,10 @@ function ProfilePanel({ session, ciudades, authHeaders, onBack, onSaved }) {
           ))}
         </div>
         <input value={form.fotoUrl} onChange={(e) => setField("fotoUrl", e.target.value)} placeholder="URL de foto de perfil" />
+        <label className="file-picker">
+          Subir foto JPG/PNG
+          <input type="file" accept="image/jpeg,image/png" onChange={cargarFotoArchivo} />
+        </label>
         <input value={form.videoUrl} onChange={(e) => setField("videoUrl", e.target.value)} placeholder="URL de video bailando" />
         <input value={form.instagram} onChange={(e) => setField("instagram", e.target.value)} placeholder="Instagram" />
         <input value={form.tiktok} onChange={(e) => setField("tiktok", e.target.value)} placeholder="TikTok" />
@@ -1064,7 +1127,7 @@ function BailaCar({ onBack, event, authHeaders }) {
     <section className="screen">
       <button className="back" onClick={onBack}>Volver</button>
       <h2>BailaCar</h2>
-      <p className="muted">Comparte trayecto para {event?.titulo || "la comunidad BAILEMOS"}.</p>
+      <p className="muted">Organiza tu transporte para eventos de baile y encuentros de la comunidad BAILEMOS.</p>
       <form className="card stack" onSubmit={publicar}>
         <div className="segmented">
           <button type="button" className={tipo === "BUSCO_COCHE" ? "active" : ""} onClick={() => setTipo("BUSCO_COCHE")}>Busco coche</button>
@@ -1162,7 +1225,7 @@ function PublishEvent({ ciudades, authHeaders, onBack, onCreated }) {
         <input value={form.cartelUrl} onChange={(e) => setField("cartelUrl", e.target.value)} placeholder="URL del cartel o Instagram" />
         <textarea value={form.descripcion} onChange={(e) => setField("descripcion", e.target.value)} placeholder="Descripción" />
         <div className="chips">
-          {estilosDisponibles.map((estilo) => (
+          {estilosEvento.map((estilo) => (
             <button type="button" key={estilo} className={form.estilos.includes(estilo) ? "chip-active" : ""} onClick={() => toggleEstilo(estilo)}>{estilo}</button>
           ))}
         </div>
