@@ -27,6 +27,17 @@ function leerArchivoComoDataUrl(file) {
   });
 }
 
+async function leerErrorServidor(response, fallback = "No se pudo completar la acción.") {
+  try {
+    const text = await response.text();
+    if (!text) return fallback;
+    const data = JSON.parse(text);
+    return data.mensaje || data.message || data.error || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function App() {
   const [session, setSession] = useState(() => {
     const saved = localStorage.getItem("bailemos_session");
@@ -834,6 +845,11 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage }) {
   const [eventoRecomendado, setEventoRecomendado] = useState("");
 
   async function cargarPerfil() {
+    if (!user?.usuarioId || Number.isNaN(Number(user.usuarioId))) {
+      alert("No se pudo abrir este perfil porque falta el identificador del usuario.");
+      return;
+    }
+
     try {
       const [perfilResponse, socialResponse, valoracionesResponse, recomendacionesResponse] = await Promise.all([
         fetch(`${API_URL}/perfil/${user.usuarioId}`, { headers: authHeaders }),
@@ -859,17 +875,23 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage }) {
   }, [user.usuarioId]);
 
   async function accionSocial(path, method) {
+    if (!user?.usuarioId || Number.isNaN(Number(user.usuarioId))) {
+      alert("Abre un perfil válido para completar esta acción.");
+      return;
+    }
+
     const response = await fetch(`${API_URL}${path}`, {
       method,
       headers: { "Content-Type": "application/json", ...authHeaders }
     });
 
     if (!response.ok) {
-      alert("No se pudo completar la acción.");
+      alert(await leerErrorServidor(response));
       return;
     }
 
     setSocial(await response.json());
+    cargarPerfil();
   }
 
   async function guardarValoracion(event) {
