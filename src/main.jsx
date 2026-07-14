@@ -911,6 +911,27 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage }) {
     cargarPerfil();
   }
 
+  function textoBotonAmistad() {
+    if (social?.amigoMio) return "Quitar amigo";
+    if (social?.solicitudAmistadEnviada) return "Solicitud enviada";
+    if (social?.solicitudAmistadRecibida) return "Te envió solicitud";
+    return "Enviar solicitud";
+  }
+
+  function gestionarAmistad() {
+    if (social?.amigoMio) {
+      accionSocial(`/social/usuario/${user.usuarioId}/amigo`, "DELETE");
+      return;
+    }
+
+    if (social?.solicitudAmistadEnviada || social?.solicitudAmistadRecibida) {
+      alert("La solicitud ya está pendiente. Revisa Mensajes para aceptar o rechazar.");
+      return;
+    }
+
+    accionSocial(`/social/usuario/${user.usuarioId}/solicitud-amistad`, "POST");
+  }
+
   async function guardarValoracion(event) {
     event.preventDefault();
     const response = await fetch(`${API_URL}/valoraciones`, {
@@ -989,9 +1010,7 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage }) {
         <button onClick={() => accionSocial(`/social/usuario/${user.usuarioId}/me-gusta`, social?.meGustaMio ? "DELETE" : "POST")}>
           {social?.meGustaMio ? "Quitar BAILEMOS!" : "BAILEMOS! me gusta"}
         </button>
-        <button onClick={() => accionSocial(`/social/usuario/${user.usuarioId}/amigo`, social?.amigoMio ? "DELETE" : "POST")}>
-          {social?.amigoMio ? "Quitar amigo" : "Añadir amigo"}
-        </button>
+        <button onClick={gestionarAmistad}>{textoBotonAmistad()}</button>
         <button onClick={() => accionSocial(`/social/usuario/${user.usuarioId}/bloquear`, social?.bloqueadoPorMi ? "DELETE" : "POST")}>
           {social?.bloqueadoPorMi ? "Desbloquear" : "Bloquear"}
         </button>
@@ -1052,14 +1071,19 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage }) {
 
 function MessagesPanel({ authHeaders, onBack, onOpen }) {
   const [chats, setChats] = useState([]);
+  const [solicitudes, setSolicitudes] = useState([]);
 
   async function cargar() {
     try {
-      const response = await fetch(`${API_URL}/chat/privados`, { headers: authHeaders });
-      if (!response.ok) throw new Error();
-      setChats(await response.json());
+      const [chatsResponse, solicitudesResponse] = await Promise.all([
+        fetch(`${API_URL}/chat/privados`, { headers: authHeaders }),
+        fetch(`${API_URL}/social/amistad/solicitudes`, { headers: authHeaders })
+      ]);
+      setChats(chatsResponse.ok ? await chatsResponse.json() : []);
+      setSolicitudes(solicitudesResponse.ok ? await solicitudesResponse.json() : []);
     } catch {
       setChats([]);
+      setSolicitudes([]);
     }
   }
 
@@ -1067,11 +1091,44 @@ function MessagesPanel({ authHeaders, onBack, onOpen }) {
     cargar();
   }, []);
 
+  async function responderSolicitud(solicitudId, accion) {
+    const response = await fetch(`${API_URL}/social/amistad/solicitudes/${solicitudId}/${accion}`, {
+      method: "POST",
+      headers: authHeaders
+    });
+
+    if (!response.ok) {
+      alert(await leerErrorServidor(response, "No se pudo responder la solicitud."));
+      return;
+    }
+
+    cargar();
+  }
+
   return (
     <section className="screen">
       <button className="back" onClick={onBack}>Volver</button>
       <h2>Mis mensajes</h2>
       <p className="muted">Tus conversaciones privadas dentro de BAILEMOS.</p>
+      <section className="card">
+        <h3>Solicitudes de amistad</h3>
+        {solicitudes.length === 0 ? (
+          <p className="muted">No tienes solicitudes pendientes.</p>
+        ) : (
+          solicitudes.map((solicitud) => (
+            <div className="list-row with-action" key={solicitud.id}>
+              <span>
+                <strong>{solicitud.nombre}</strong>
+                <small>{solicitud.rol}</small>
+              </span>
+              <div className="mini-actions">
+                <button className="primary compact" onClick={() => responderSolicitud(solicitud.id, "aceptar")}>Aceptar</button>
+                <button className="secondary compact" onClick={() => responderSolicitud(solicitud.id, "rechazar")}>Rechazar</button>
+              </div>
+            </div>
+          ))
+        )}
+      </section>
       <section className="card">
         {chats.length === 0 ? (
           <p className="muted">Aún no tienes conversaciones. Entra en Gente y escribe a alguien.</p>
