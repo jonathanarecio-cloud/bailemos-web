@@ -915,7 +915,7 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage }) {
     if (social?.amigoMio) return "Quitar amigo";
     if (social?.solicitudAmistadEnviada) return "Solicitud enviada";
     if (social?.solicitudAmistadRecibida) return "Te envió solicitud";
-    return "Enviar solicitud";
+    return "Enviar solicitud de amistad";
   }
 
   function gestionarAmistad() {
