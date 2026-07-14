@@ -711,8 +711,9 @@ function HomeView({
       </div>
 
       <article className="card feature-card">
-        <small>{event?.ciudadNombre || "BAILEMOS!"}</small>
-        <h3>{loading ? "Cargando eventos..." : event?.titulo || "No hay eventos publicados"}</h3>
+        <small>{event ? "Lugar elegido" : "BAILEMOS!"}</small>
+        <h3>{loading ? "Cargando eventos..." : event ? (event.lugarNombre || event.titulo) : "No hay eventos publicados"}</h3>
+        {event && <p className="event-title-line">{event.titulo} - {event.ciudadNombre}</p>}
         {event?.cartelUrl ? (
           <img className="event-poster" src={event.cartelUrl} alt={`Cartel de ${event.titulo}`} />
         ) : (
@@ -734,19 +735,6 @@ function HomeView({
           <button className="secondary" onClick={onOpenBailaCar}>BailaCar</button>
         </div>
       </article>
-
-      {event && (
-        <article className="card selected-event-card">
-          <small>Lugar elegido</small>
-          <h3>{event.lugarNombre || event.titulo}</h3>
-          <p>{event.titulo} - {event.ciudadNombre} - {event.asistentes || 0} personas van</p>
-          <div className="actions">
-            <button className="secondary" onClick={onOpenAttendees}>Quien va</button>
-            <button className="secondary" onClick={onOpenChat}>Chat de evento</button>
-            <button className="secondary" onClick={onOpenBailaCar}>BailaCar</button>
-          </div>
-        </article>
-      )}
 
       <section className="card">
         <h3>Playlist BAILEMOS</h3>

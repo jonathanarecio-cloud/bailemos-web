@@ -254,6 +254,11 @@ h3 {
   font-weight: 800;
 }
 
+.event-title-line {
+  color: #d9d9d9;
+  margin-top: -4px;
+}
+
 .event-poster {
   width: 100%;
   aspect-ratio: 16 / 9;
@@ -272,15 +277,6 @@ h3 {
     linear-gradient(135deg, rgba(242, 23, 91, 0.22), rgba(255, 122, 47, 0.14)),
     #070707;
   min-height: 140px;
-}
-
-.selected-event-card {
-  border-color: rgba(242, 23, 91, 0.45);
-}
-
-.selected-event-card small {
-  color: #f2175b;
-  font-weight: 800;
 }
 
 .actions {
