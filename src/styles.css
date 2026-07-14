@@ -223,8 +223,15 @@ h3 {
   background: linear-gradient(90deg, #f2175b, #ff7a2f, #ffffff);
 }
 
-.search {
+.search-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
   margin-bottom: 16px;
+}
+
+.search-row .search {
+  margin-bottom: 0;
 }
 
 .quick-grid {
@@ -247,11 +254,44 @@ h3 {
   font-weight: 800;
 }
 
+.event-poster {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 117, 66, 0.35);
+  margin: 12px 0;
+  background: #050505;
+}
+
+.empty-poster {
+  display: grid;
+  place-items: center;
+  color: #b9b9b9;
+  background:
+    linear-gradient(135deg, rgba(242, 23, 91, 0.22), rgba(255, 122, 47, 0.14)),
+    #070707;
+  min-height: 140px;
+}
+
+.selected-event-card {
+  border-color: rgba(242, 23, 91, 0.45);
+}
+
+.selected-event-card small {
+  color: #f2175b;
+  font-weight: 800;
+}
+
 .actions {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 10px;
   margin-top: 14px;
+}
+
+.attendance-actions {
+  margin-top: 12px;
 }
 
 .full-button,
@@ -282,6 +322,26 @@ h3 {
   gap: 3px;
   padding: 10px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.event-result {
+  width: 100%;
+  min-height: auto;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  text-align: left;
+  color: #ffffff;
+}
+
+.event-result.active {
+  border-color: #ff7a2f;
+  background: rgba(255, 122, 47, 0.12);
+}
+
+.event-result small {
+  color: #ffb18c;
 }
 
 .person-link {
@@ -479,6 +539,10 @@ h3 {
   }
 
   .quick-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .search-row {
     grid-template-columns: 1fr;
   }
 

@@ -94,7 +94,10 @@ function App() {
     try {
       const [eventosData, ciudadesData] = await Promise.all([api("/eventos"), api("/ciudades")]);
       setEvents(eventosData || []);
-      setEvent(eventosData?.[0] || null);
+      setEvent((actual) => {
+        if (!eventosData?.length) return null;
+        return eventosData.find((item) => Number(item.id) === Number(actual?.id)) || eventosData[0];
+      });
       setCiudades(ciudadesData?.length ? ciudadesData : ciudadesIniciales);
 
       try {
@@ -138,18 +141,29 @@ function App() {
     setNotice("");
   }
 
-  async function marcarVoy() {
+  async function marcarAsistencia(tipo) {
     if (!event) {
       setNotice("Primero publica o selecciona un evento.");
       return;
     }
 
+    const rutas = {
+      interesado: `/eventos/${event.id}/interesado`,
+      voy: `/eventos/${event.id}/voy`,
+      noVoy: `/eventos/${event.id}/no-voy`
+    };
+    const mensajes = {
+      interesado: "Marcado como interesado.",
+      voy: "Ya apareces como asistente.",
+      noVoy: "Marcado como no voy."
+    };
+
     try {
-      await api(`/eventos/${event.id}/voy`, { method: "POST", headers: authHeaders });
-      setNotice("Ya apareces como asistente.");
+      await api(rutas[tipo], { method: "POST", headers: authHeaders });
+      setNotice(mensajes[tipo]);
       cargarInicio();
     } catch {
-      setNotice("No se pudo guardar tu asistencia.");
+      setNotice("No se pudo guardar tu respuesta.");
     }
   }
 
@@ -184,14 +198,17 @@ function App() {
       {notice && <button className="notice" onClick={() => setNotice("")}>{notice}</button>}
 
       {screen === "home" && (
-        <Home
+        <HomeView
           session={session}
           loading={loading}
           event={event}
           events={events}
           ciudades={ciudades}
           ciudadActiva={ciudadActiva}
-          onVoy={marcarVoy}
+          onInteresado={() => marcarAsistencia("interesado")}
+          onVoy={() => marcarAsistencia("voy")}
+          onNoVoy={() => marcarAsistencia("noVoy")}
+          onSelectEvent={setEvent}
           onOpenChat={() => setScreen(event ? "event-chat" : "general-chat")}
           onOpenGeneralChat={() => setScreen("general-chat")}
           onOpenPeople={() => setScreen("people")}
@@ -599,6 +616,164 @@ function Home({
               <strong>{item.titulo}</strong>
               <span>{item.ciudadNombre} - {item.lugarNombre}</span>
             </div>
+          ))}
+        </div>
+      </section>
+    </section>
+  );
+}
+
+function HomeView({
+  session,
+  loading,
+  event,
+  events,
+  ciudades,
+  ciudadActiva,
+  onInteresado,
+  onVoy,
+  onNoVoy,
+  onSelectEvent,
+  onOpenChat,
+  onOpenGeneralChat,
+  onOpenPeople,
+  onOpenMessages,
+  onOpenProfile,
+  onOpenBailaCar,
+  onOpenPublish,
+  onOpenMagic,
+  onOpenRating,
+  onOpenOrganizer,
+  onOpenAdmin,
+  onOpenAttendees,
+  onCiudad
+}) {
+  const esAdmin = session?.rol === "ADMIN" || session?.rol === "SUPER_ADMIN";
+  const [busqueda, setBusqueda] = useState("");
+  const [busquedaActiva, setBusquedaActiva] = useState("");
+
+  const normalizar = (valor) => (valor || "")
+    .toString()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+  const eventosFiltrados = useMemo(() => {
+    const texto = normalizar(busquedaActiva);
+    if (!texto) return events;
+    return events.filter((item) => {
+      const contenido = [
+        item.titulo,
+        item.descripcion,
+        item.ciudadNombre,
+        item.lugarNombre,
+        item.direccion,
+        ...(item.estilos || [])
+      ].join(" ");
+      return normalizar(contenido).includes(texto);
+    });
+  }, [busquedaActiva, events]);
+
+  function buscarEventos(eventSubmit) {
+    eventSubmit.preventDefault();
+    setBusquedaActiva(busqueda.trim());
+  }
+
+  function elegirEvento(item) {
+    onSelectEvent(item);
+    setBusquedaActiva(busqueda.trim() || item.ciudadNombre || item.lugarNombre || "");
+  }
+
+  return (
+    <section className="screen">
+      <div className="accent" />
+      <h2>Donde se baila hoy</h2>
+      <form className="search-row" onSubmit={buscarEventos}>
+        <input
+          className="search"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder="Busca Malaga, Barcelona, sala, bachata, salsa..."
+        />
+        <button className="primary">Buscar</button>
+      </form>
+
+      <div className="quick-grid">
+        <button onClick={onOpenPublish}>Publicar evento</button>
+        <button onClick={onOpenMagic}>Haz tu magia</button>
+        <button onClick={onOpenPeople}>Gente</button>
+        <button onClick={onOpenMessages}>Mensajes</button>
+        <button onClick={onOpenProfile}>Mi perfil</button>
+        <button onClick={onOpenGeneralChat}>Chat general</button>
+        <button onClick={onOpenOrganizer}>Portal salas</button>
+        <button onClick={onOpenRating}>Valorar</button>
+        {esAdmin && <button onClick={onOpenAdmin}>Admin</button>}
+      </div>
+
+      <article className="card feature-card">
+        <small>{event?.ciudadNombre || "BAILEMOS!"}</small>
+        <h3>{loading ? "Cargando eventos..." : event?.titulo || "No hay eventos publicados"}</h3>
+        {event?.cartelUrl ? (
+          <img className="event-poster" src={event.cartelUrl} alt={`Cartel de ${event.titulo}`} />
+        ) : (
+          <div className="event-poster empty-poster">Cartel pendiente</div>
+        )}
+        <p>
+          {event
+            ? `${event.lugarNombre || "Lugar pendiente"} - Van ${event.asistentes || 0} personas`
+            : "Puedes publicar un evento o entrar al chat general."}
+        </p>
+        <div className="actions attendance-actions">
+          <button className="secondary" onClick={onInteresado} disabled={!event}>Interesado</button>
+          <button className="primary" onClick={onVoy} disabled={!event}>Voy</button>
+          <button className="secondary" onClick={onNoVoy} disabled={!event}>No voy</button>
+        </div>
+        <div className="actions">
+          <button className="secondary" onClick={onOpenAttendees} disabled={!event}>Quien va</button>
+          <button className="secondary" onClick={onOpenChat}>{event ? "Chat evento" : "Chat general"}</button>
+          <button className="secondary" onClick={onOpenBailaCar}>BailaCar</button>
+        </div>
+      </article>
+
+      {event && (
+        <article className="card selected-event-card">
+          <small>Lugar elegido</small>
+          <h3>{event.lugarNombre || event.titulo}</h3>
+          <p>{event.titulo} - {event.ciudadNombre} - {event.asistentes || 0} personas van</p>
+          <div className="actions">
+            <button className="secondary" onClick={onOpenAttendees}>Quien va</button>
+            <button className="secondary" onClick={onOpenChat}>Chat de evento</button>
+            <button className="secondary" onClick={onOpenBailaCar}>BailaCar</button>
+          </div>
+        </article>
+      )}
+
+      <section className="card">
+        <h3>Playlist BAILEMOS</h3>
+        <p>Musica para calentar la pista: bachata, salsa y kizomba.</p>
+        <a className="primary link-button" href={SPOTIFY_BAILEMOS_URL} target="_blank" rel="noreferrer">Escuchar en Spotify</a>
+      </section>
+
+      <section className="card">
+        <h3>Estoy en una ciudad</h3>
+        <p>{ciudadActiva ? `Ahora estas en ${ciudadActiva.ciudadNombre}` : "Elige ciudad para ver gente, eventos y chat local."}</p>
+        <div className="chips">
+          {ciudades.map((ciudad) => (
+            <button key={ciudad.id} onClick={() => onCiudad(ciudad)}>{ciudad.nombre}</button>
+          ))}
+        </div>
+      </section>
+
+      <section className="card">
+        <h3>{busquedaActiva ? `Resultados para "${busquedaActiva}"` : "Eventos disponibles"}</h3>
+        <div className="list">
+          {eventosFiltrados.length === 0 && <p className="muted">No hay fiestas para esa busqueda todavia. Publica una o prueba otra ciudad.</p>}
+          {eventosFiltrados.map((item) => (
+            <button key={item.id} className={`list-row event-result ${Number(item.id) === Number(event?.id) ? "active" : ""}`} onClick={() => elegirEvento(item)}>
+              <strong>{item.titulo}</strong>
+              <span>{item.ciudadNombre} - {item.lugarNombre || "Lugar pendiente"} - Van {item.asistentes || 0}</span>
+              <small>{item.estilos?.join(" / ") || "Bachata / Salsa / Kizomba"}</small>
+            </button>
           ))}
         </div>
       </section>
