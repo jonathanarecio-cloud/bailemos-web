@@ -165,33 +165,30 @@ h3 {
   padding: 10px 0;
 }
 
-.topbar div {
+.hello-copy {
   display: grid;
   gap: 2px;
-}
-
-.brand-stack {
-  width: 64px;
-  display: grid;
-  justify-items: center;
-  gap: 5px;
+  min-width: 0;
+  flex: 1;
 }
 
 .mini-logo {
-  width: 38px;
-  height: 38px;
+  width: 46px;
+  height: 46px;
   object-fit: cover;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid rgba(255, 117, 66, 0.55);
+  flex: 0 0 auto;
 }
 
 .avatar {
-  width: 54px;
-  height: 54px;
+  width: 58px;
+  height: 58px;
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid rgba(255, 117, 66, 0.75);
   background: #111111;
+  flex: 0 0 auto;
 }
 
 .profile-preview {
@@ -468,7 +465,8 @@ h3 {
   }
 
   .topbar {
-    align-items: flex-start;
+    align-items: center;
+    gap: 9px;
   }
 
   .topbar strong {
@@ -482,6 +480,16 @@ h3 {
   .ghost {
     min-height: 40px;
     padding: 0 10px;
+  }
+
+  .mini-logo {
+    width: 40px;
+    height: 40px;
+  }
+
+  .avatar {
+    width: 50px;
+    height: 50px;
   }
 
   .quick-grid {

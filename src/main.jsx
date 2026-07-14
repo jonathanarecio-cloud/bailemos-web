@@ -28,6 +28,12 @@ function leerArchivoComoDataUrl(file) {
   });
 }
 
+function detectarEstilosEvento(texto) {
+  const contenido = (texto || "").toUpperCase();
+  const detectados = estilosEvento.filter((estilo) => contenido.includes(estilo));
+  return detectados.length ? detectados : ["BACHATA"];
+}
+
 async function leerErrorServidor(response, fallback = "No se pudo completar la acción.") {
   try {
     const text = await response.text();
@@ -503,11 +509,9 @@ function Header({ session, perfil, fotoPerfilInicio, onLogout }) {
 
   return (
     <header className="topbar">
-      <div className="brand-stack">
-        <img className="mini-logo" src="/bailemos_logo.jpeg" alt="BAILEMOS!" />
-        <img className="avatar" src={fotoPerfil} alt={nombre} />
-      </div>
-      <div>
+      <img className="mini-logo" src="/bailemos_logo.jpeg" alt="BAILEMOS!" />
+      <img className="avatar" src={fotoPerfil} alt={nombre} />
+      <div className="hello-copy">
         <strong>Hola {nombre}</strong>
         <span>Hoy es un buen dia para bailar. Vamos a ello.</span>
       </div>
@@ -1440,6 +1444,7 @@ function PublishEvent({ ciudades, authHeaders, onBack, onCreated }) {
     cartelUrl: "",
     estilos: ["BACHATA"]
   });
+  const [textoImportado, setTextoImportado] = useState("");
 
   function setField(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -1451,6 +1456,25 @@ function PublishEvent({ ciudades, authHeaders, onBack, onCreated }) {
       estilos: current.estilos.includes(estilo)
         ? current.estilos.filter((item) => item !== estilo)
         : [...current.estilos, estilo]
+    }));
+  }
+
+  function prepararDesdeTexto() {
+    const lineas = textoImportado
+      .split("\n")
+      .map((linea) => linea.trim())
+      .filter(Boolean);
+    const primeraLinea = lineas[0] || "";
+    const url = textoImportado.match(/https?:\/\/\S+/i)?.[0] || "";
+    const precio = textoImportado.match(/(\d+([,.]\d{1,2})?)\s*(€|eur|euros)/i)?.[1]?.replace(",", ".") || "";
+
+    setForm((current) => ({
+      ...current,
+      titulo: current.titulo || primeraLinea || "Evento BAILEMOS",
+      descripcion: current.descripcion || textoImportado,
+      precio: current.precio || precio,
+      cartelUrl: current.cartelUrl || url,
+      estilos: detectarEstilosEvento(textoImportado)
     }));
   }
 
@@ -1485,6 +1509,11 @@ function PublishEvent({ ciudades, authHeaders, onBack, onCreated }) {
     <section className="screen">
       <button className="back" onClick={onBack}>Volver</button>
       <h2>Publicar evento</h2>
+      <section className="card stack">
+        <h3>Detectar estilos automáticamente</h3>
+        <textarea value={textoImportado} onChange={(event) => setTextoImportado(event.target.value)} placeholder="Pega texto del evento. Si pone Bachata, Salsa o Kizomba, BAILEMOS los marcará automáticamente." />
+        <button className="secondary" type="button" onClick={prepararDesdeTexto}>Rellenar con este texto</button>
+      </section>
       <form className="card stack" onSubmit={submit}>
         <input value={form.titulo} onChange={(e) => setField("titulo", e.target.value)} placeholder="Nombre del evento" required />
         <select value={form.ciudadId} onChange={(e) => setField("ciudadId", e.target.value)}>
@@ -1544,7 +1573,6 @@ function OrganizerPortal({ ciudades, authHeaders, onBack, onCreated }) {
     const primeraLinea = lineas[0] || "";
     const url = texto.match(/https?:\/\/\S+/i)?.[0] || "";
     const precio = texto.match(/(\d+([,.]\d{1,2})?)\s*(€|eur|euros)/i)?.[1]?.replace(",", ".") || "";
-    const estiloDetectado = estilosEvento.find((estilo) => texto.toUpperCase().includes(estilo)) || "BACHATA";
 
     setForm((current) => ({
       ...current,
@@ -1552,7 +1580,7 @@ function OrganizerPortal({ ciudades, authHeaders, onBack, onCreated }) {
       descripcion: current.descripcion || texto,
       precio: current.precio || precio,
       cartelUrl: current.cartelUrl || url,
-      estilos: current.estilos?.length ? current.estilos : [estiloDetectado]
+      estilos: detectarEstilosEvento(texto)
     }));
   }
 
