@@ -2092,8 +2092,14 @@ function PublishEvent({ ciudades, authHeaders, onBack, onCreated, editingEvent =
         </select>
         <input value={form.lugarNombre} onChange={(e) => setField("lugarNombre", e.target.value)} placeholder="Sala, disco o academia" />
         <input value={form.direccion} onChange={(e) => setField("direccion", e.target.value)} placeholder="Dirección" />
-        <input value={form.fechaInicio} onChange={(e) => setField("fechaInicio", e.target.value)} type="datetime-local" required />
-        <input value={form.fechaFin} onChange={(e) => setField("fechaFin", e.target.value)} type="datetime-local" />
+        <label className="field-label">
+          <span>Fecha y hora de inicio del evento</span>
+          <input value={form.fechaInicio} onChange={(e) => setField("fechaInicio", e.target.value)} type="datetime-local" required />
+        </label>
+        <label className="field-label">
+          <span>Fecha y hora de fin (opcional)</span>
+          <input value={form.fechaFin} onChange={(e) => setField("fechaFin", e.target.value)} type="datetime-local" />
+        </label>
         <input value={form.precio} onChange={(e) => setField("precio", e.target.value)} placeholder="Precio" inputMode="decimal" />
         <input value={form.cartelUrl} onChange={(e) => setField("cartelUrl", e.target.value)} placeholder="URL del cartel o Instagram" />
         <label className="file-picker">
@@ -2223,8 +2229,14 @@ function OrganizerPortal({ ciudades, authHeaders, onBack, onCreated }) {
         </select>
         <input value={form.lugarNombre} onChange={(event) => setField("lugarNombre", event.target.value)} placeholder="Sala, disco, academia u organizador" />
         <input value={form.direccion} onChange={(event) => setField("direccion", event.target.value)} placeholder="Dirección" />
-        <input value={form.fechaInicio} onChange={(event) => setField("fechaInicio", event.target.value)} type="datetime-local" required />
-        <input value={form.fechaFin} onChange={(event) => setField("fechaFin", event.target.value)} type="datetime-local" />
+        <label className="field-label">
+          <span>Fecha y hora de inicio del evento</span>
+          <input value={form.fechaInicio} onChange={(event) => setField("fechaInicio", event.target.value)} type="datetime-local" required />
+        </label>
+        <label className="field-label">
+          <span>Fecha y hora de fin (opcional)</span>
+          <input value={form.fechaFin} onChange={(event) => setField("fechaFin", event.target.value)} type="datetime-local" />
+        </label>
         <input value={form.precio} onChange={(event) => setField("precio", event.target.value)} placeholder="Precio" inputMode="decimal" />
         <input value={form.cartelUrl} onChange={(event) => setField("cartelUrl", event.target.value)} placeholder="URL del cartel, web o Instagram" />
         <label className="file-picker">

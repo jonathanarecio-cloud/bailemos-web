@@ -170,6 +170,19 @@ h3 {
   margin-top: 4px;
 }
 
+.field-label {
+  display: grid;
+  gap: 7px;
+  color: #ffb18c;
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.field-label input {
+  color: #ffffff;
+  font-weight: 400;
+}
+
 .notice-text {
   color: #ffb18c;
   font-weight: 800;
