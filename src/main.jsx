@@ -509,8 +509,7 @@ function Header({ session, perfil, fotoPerfilInicio, onLogout }) {
 
   return (
     <header className="topbar">
-      <img className="mini-logo" src="/bailemos_logo.jpeg" alt="BAILEMOS!" />
-      <img className="avatar" src={fotoPerfil} alt={nombre} />
+      <img className="header-profile-photo" src={fotoPerfil} alt={nombre} />
       <div className="hello-copy">
         <strong>Hola {nombre}</strong>
         <span>Hoy es un buen dia para bailar. Vamos a ello.</span>
