@@ -17,6 +17,7 @@ const estilosEvento = ["BACHATA", "SALSA", "KIZOMBA", "OTRO"];
 const MAX_FOTO_MB = 3;
 const MAX_VIDEO_MB = 12;
 const SPOTIFY_BAILEMOS_URL = "https://open.spotify.com/search/bachata%20salsa%20kizomba";
+const PROFILE_PHOTO_KEY = "bailemos_profile_photo";
 
 function leerArchivoComoDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -50,6 +51,7 @@ function App() {
   const [ciudadActiva, setCiudadActiva] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [miPerfil, setMiPerfil] = useState(null);
+  const [fotoPerfilInicio, setFotoPerfilInicio] = useState(() => localStorage.getItem(PROFILE_PHOTO_KEY) || "");
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState("");
 
@@ -99,6 +101,11 @@ function App() {
       try {
         const perfilResponse = await api("/perfil/me", { headers: authHeaders });
         setMiPerfil(perfilResponse);
+        const foto = perfilResponse?.fotoData || perfilResponse?.fotoUrl || "";
+        if (foto) {
+          localStorage.setItem(PROFILE_PHOTO_KEY, foto);
+          setFotoPerfilInicio(foto);
+        }
       } catch {
         setMiPerfil(null);
       }
@@ -117,8 +124,10 @@ function App() {
 
   function cerrarSesion() {
     localStorage.removeItem("bailemos_session");
+    localStorage.removeItem(PROFILE_PHOTO_KEY);
     setSession(null);
     setMiPerfil(null);
+    setFotoPerfilInicio("");
     setScreen("welcome");
     setNotice("");
   }
@@ -165,7 +174,7 @@ function App() {
 
   return (
     <main className="app-shell">
-      <Header session={session} perfil={miPerfil} onLogout={cerrarSesion} />
+      <Header session={session} perfil={miPerfil} fotoPerfilInicio={fotoPerfilInicio} onLogout={cerrarSesion} />
       {notice && <button className="notice" onClick={() => setNotice("")}>{notice}</button>}
 
       {screen === "home" && (
@@ -295,7 +304,12 @@ function App() {
           onBack={() => setScreen("home")}
           onSaved={(perfil) => {
             const updated = { ...session, nombre: perfil.nombre || session.nombre };
+            const foto = perfil.fotoData || perfil.fotoUrl || "";
             localStorage.setItem("bailemos_session", JSON.stringify(updated));
+            if (foto) {
+              localStorage.setItem(PROFILE_PHOTO_KEY, foto);
+              setFotoPerfilInicio(foto);
+            }
             setSession(updated);
             setMiPerfil(perfil);
             setNotice("Perfil actualizado.");
@@ -483,8 +497,8 @@ function AuthCard({ title, onBack, children }) {
   );
 }
 
-function Header({ session, perfil, onLogout }) {
-  const fotoPerfil = perfil?.fotoData || perfil?.fotoUrl || "/bailemos_logo.jpeg";
+function Header({ session, perfil, fotoPerfilInicio, onLogout }) {
+  const fotoPerfil = perfil?.fotoData || perfil?.fotoUrl || fotoPerfilInicio || "/bailemos_logo.jpeg";
   const nombre = perfil?.nombreArtistico || session?.nombre || "bailador";
 
   return (
