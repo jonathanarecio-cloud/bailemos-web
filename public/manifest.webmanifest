@@ -1,11 +1,13 @@
 {
   "name": "BAILEMOS!",
   "short_name": "BAILEMOS!",
-  "description": "La comunidad mundial del baile.",
+  "description": "La comunidad profesional para bailar, conectar, descubrir eventos y vivir el baile.",
   "start_url": "/",
+  "scope": "/",
+  "id": "/",
   "display": "standalone",
   "background_color": "#050505",
-  "theme_color": "#050505",
+  "theme_color": "#f2175b",
   "orientation": "portrait",
   "icons": [
     {

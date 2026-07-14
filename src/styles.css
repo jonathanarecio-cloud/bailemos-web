@@ -152,6 +152,29 @@ h3 {
   border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
+.center-button {
+  margin-left: 0;
+}
+
+.check-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 10px;
+  color: #d9d9d9;
+  font-size: 0.94rem;
+}
+
+.check-row input {
+  width: auto;
+  margin-top: 4px;
+}
+
+.notice-text {
+  color: #ffb18c;
+  font-weight: 800;
+}
+
 .topbar {
   display: flex;
   align-items: center;
@@ -214,6 +237,20 @@ h3 {
 
 .file-picker input {
   display: none;
+}
+
+.verification-box,
+.readiness-row {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(242, 23, 91, 0.35);
+  border-radius: 8px;
+  padding: 14px;
+  background: rgba(242, 23, 91, 0.08);
+}
+
+.readiness-row span {
+  color: #b9b9b9;
 }
 
 .accent {

@@ -14,8 +14,8 @@ const ciudadesIniciales = [
 
 const estilosDisponibles = ["BACHATA", "SALSA", "KIZOMBA", "MERENGUE", "URBANO", "OTRO"];
 const estilosEvento = ["BACHATA", "SALSA", "KIZOMBA", "OTRO"];
-const MAX_FOTO_MB = 3;
-const MAX_VIDEO_MB = 12;
+const MAX_FOTO_MB = 5;
+const MAX_VIDEO_MB = 25;
 const SPOTIFY_BAILEMOS_URL = "https://open.spotify.com/search/bachata%20salsa%20kizomba";
 const PROFILE_PHOTO_KEY = "bailemos_profile_photo";
 
@@ -181,15 +181,23 @@ function App() {
   }
 
   if (screen === "welcome") {
-    return <Welcome onLogin={() => setScreen("login")} onRegister={() => setScreen("register")} />;
+    return <WelcomePro onLogin={() => setScreen("login")} onRegister={() => setScreen("register")} onLegal={() => setScreen("legal-public")} />;
   }
 
   if (screen === "login") {
-    return <Login onBack={() => setScreen("welcome")} onSuccess={guardarSesion} />;
+    return <LoginPro onBack={() => setScreen("welcome")} onSuccess={guardarSesion} onForgot={() => setScreen("forgot-password")} />;
   }
 
   if (screen === "register") {
-    return <Register onBack={() => setScreen("welcome")} onSuccess={guardarSesion} />;
+    return <RegisterPro onBack={() => setScreen("welcome")} onSuccess={guardarSesion} />;
+  }
+
+  if (screen === "forgot-password") {
+    return <ForgotPassword onBack={() => setScreen("login")} />;
+  }
+
+  if (screen === "legal-public") {
+    return <LegalPanel onBack={() => setScreen("welcome")} />;
   }
 
   return (
@@ -220,11 +228,22 @@ function App() {
           onOpenRating={() => setScreen("rating")}
           onOpenOrganizer={() => setScreen("organizer")}
           onOpenAdmin={() => setScreen("admin")}
+          onOpenLegal={() => setScreen("legal")}
+          onOpenNotifications={() => setScreen("notifications")}
+          onOpenPro={() => setScreen("pro")}
           onOpenAttendees={() => setScreen("attendees")}
           onCiudad={marcarCiudad}
           authHeaders={authHeaders}
         />
       )}
+
+      {screen === "legal" && <LegalPanel onBack={() => setScreen("home")} />}
+
+      {screen === "notifications" && (
+        <NotificationsPanel authHeaders={authHeaders} events={events} onBack={() => setScreen("home")} />
+      )}
+
+      {screen === "pro" && <ProductReadinessPanel onBack={() => setScreen("home")} />}
 
       {screen === "attendees" && event && (
         <AttendeesPanel
@@ -520,6 +539,170 @@ function AuthCard({ title, onBack, children }) {
   );
 }
 
+function WelcomePro({ onLogin, onRegister, onLegal }) {
+  return (
+    <main className="welcome">
+      <img className="logo hero-logo" src="/bailemos_logo.jpeg" alt="BAILEMOS!" />
+      <h1>BAILEMOS!</h1>
+      <p>Baila. Conecta. Vive el baile.</p>
+      <div className="stack">
+        <button className="primary" onClick={onLogin}>Iniciar sesion</button>
+        <button className="secondary" onClick={onRegister}>Crear cuenta</button>
+        <button className="ghost center-button" onClick={onLegal}>Privacidad y condiciones</button>
+      </div>
+    </main>
+  );
+}
+
+function LoginPro({ onBack, onSuccess, onForgot }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function submit(event) {
+    event.preventDefault();
+    setBusy(true);
+    try {
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+      if (!response.ok) throw new Error();
+      onSuccess(await response.json());
+    } catch {
+      alert("Usuario o contrasena incorrectos.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <AuthCard title="Entrar" onBack={onBack}>
+      <form onSubmit={submit} className="stack">
+        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" required />
+        <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contrasena" type="password" required />
+        <button className="primary" disabled={busy}>{busy ? "Entrando..." : "Entrar"}</button>
+        <button type="button" className="ghost center-button" onClick={onForgot}>Olvide mi contrasena</button>
+      </form>
+    </AuthCard>
+  );
+}
+
+function RegisterPro({ onBack, onSuccess }) {
+  const [nombre, setNombre] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [rol, setRol] = useState("BAILADOR");
+  const [codigoAdmin, setCodigoAdmin] = useState("");
+  const [aceptoLegal, setAceptoLegal] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function submit(event) {
+    event.preventDefault();
+    if (!aceptoLegal) {
+      alert("Debes aceptar las condiciones, la politica de privacidad y las normas de comunidad.");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const response = await fetch(`${API_URL}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nombre,
+          email,
+          password,
+          rol: codigoAdmin.trim() ? "SUPER_ADMIN" : rol,
+          codigoAdmin: codigoAdmin.trim() || null
+        })
+      });
+      if (!response.ok) {
+        alert(await leerErrorServidor(response, "No se pudo crear la cuenta."));
+        return;
+      }
+      onSuccess(await response.json());
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <AuthCard title="Crear cuenta" onBack={onBack}>
+      <form onSubmit={submit} className="stack">
+        <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre" required />
+        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" required />
+        <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contrasena" type="password" minLength="6" required />
+        <div className="segmented">
+          <button type="button" className={rol === "BAILADOR" ? "active" : ""} onClick={() => setRol("BAILADOR")}>Bailador</button>
+          <button type="button" className={rol === "PROFESIONAL" ? "active" : ""} onClick={() => setRol("PROFESIONAL")}>Profesional</button>
+        </div>
+        <input value={codigoAdmin} onChange={(e) => setCodigoAdmin(e.target.value)} placeholder="Codigo privado admin (solo Jonathan)" type="password" />
+        <label className="check-row">
+          <input type="checkbox" checked={aceptoLegal} onChange={(e) => setAceptoLegal(e.target.checked)} />
+          <span>Acepto condiciones, privacidad y normas de comunidad.</span>
+        </label>
+        <button className="primary" disabled={busy}>{busy ? "Creando..." : "Crear cuenta"}</button>
+      </form>
+    </AuthCard>
+  );
+}
+
+function ForgotPassword({ onBack }) {
+  const [email, setEmail] = useState("");
+  const [codigo, setCodigo] = useState("");
+  const [nuevoPassword, setNuevoPassword] = useState("");
+  const [mensaje, setMensaje] = useState("");
+
+  async function solicitar(event) {
+    event.preventDefault();
+    const response = await fetch(`${API_URL}/auth/password/forgot`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email })
+    });
+    if (!response.ok) {
+      alert(await leerErrorServidor(response, "No se pudo generar el codigo."));
+      return;
+    }
+    const data = await response.json();
+    setMensaje(data.codigoTemporal ? `Codigo temporal: ${data.codigoTemporal}` : data.mensaje);
+  }
+
+  async function cambiar(event) {
+    event.preventDefault();
+    const response = await fetch(`${API_URL}/auth/password/reset`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, codigo, nuevaPassword: nuevoPassword })
+    });
+    if (!response.ok) {
+      alert(await leerErrorServidor(response, "No se pudo cambiar la contrasena."));
+      return;
+    }
+    alert("Contrasena actualizada. Ya puedes iniciar sesion.");
+    onBack();
+  }
+
+  return (
+    <AuthCard title="Recuperar cuenta" onBack={onBack}>
+      <form className="card stack" onSubmit={solicitar}>
+        <h3>1. Generar codigo</h3>
+        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" required />
+        <button className="primary">Generar codigo temporal</button>
+        {mensaje && <p className="notice-text">{mensaje}</p>}
+      </form>
+      <form className="card stack" onSubmit={cambiar}>
+        <h3>2. Cambiar contrasena</h3>
+        <input value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="Codigo" required />
+        <input value={nuevoPassword} onChange={(e) => setNuevoPassword(e.target.value)} placeholder="Nueva contrasena" type="password" minLength="6" required />
+        <button className="primary">Actualizar contrasena</button>
+      </form>
+    </AuthCard>
+  );
+}
+
 function Header({ session, perfil, fotoPerfilInicio, onLogout }) {
   const fotoPerfil = perfil?.fotoData || perfil?.fotoUrl || fotoPerfilInicio || "/bailemos_logo.jpeg";
   const nombre = perfil?.nombreArtistico || session?.nombre || "bailador";
@@ -645,6 +828,9 @@ function HomeView({
   onOpenRating,
   onOpenOrganizer,
   onOpenAdmin,
+  onOpenLegal,
+  onOpenNotifications,
+  onOpenPro,
   onOpenAttendees,
   onCiudad
 }) {
@@ -707,6 +893,9 @@ function HomeView({
         <button onClick={onOpenGeneralChat}>Chat general</button>
         <button onClick={onOpenOrganizer}>Portal salas</button>
         <button onClick={onOpenRating}>Valorar</button>
+        <button onClick={onOpenNotifications}>Notificaciones</button>
+        <button onClick={onOpenLegal}>Legal</button>
+        <button onClick={onOpenPro}>Producto Pro</button>
         {esAdmin && <button onClick={onOpenAdmin}>Admin</button>}
       </div>
 
@@ -956,6 +1145,102 @@ function AdminPanel({ authHeaders, session, onBack }) {
           </div>
         ))}
       </section>
+    </section>
+  );
+}
+
+function NotificationsPanel({ authHeaders, events, onBack }) {
+  const [solicitudes, setSolicitudes] = useState([]);
+
+  useEffect(() => {
+    fetch(`${API_URL}/social/amistad/solicitudes`, { headers: authHeaders })
+      .then((response) => response.ok ? response.json() : [])
+      .then(setSolicitudes)
+      .catch(() => setSolicitudes([]));
+  }, []);
+
+  const proximos = [...events]
+    .sort((a, b) => new Date(a.fechaInicio || 0) - new Date(b.fechaInicio || 0))
+    .slice(0, 3);
+
+  return (
+    <section className="screen">
+      <button className="back" onClick={onBack}>Volver</button>
+      <h2>Notificaciones</h2>
+      <p className="muted">Actividad importante de tu comunidad BAILEMOS.</p>
+      <section className="card">
+        <h3>Solicitudes de amistad</h3>
+        {solicitudes.length === 0 ? <p className="muted">No tienes solicitudes pendientes.</p> : solicitudes.map((item) => (
+          <div className="list-row" key={item.id}>
+            <strong>{item.nombre}</strong>
+            <span>Quiere conectar contigo para bailar.</span>
+          </div>
+        ))}
+      </section>
+      <section className="card">
+        <h3>Eventos recomendados</h3>
+        {proximos.length === 0 ? <p className="muted">Todavia no hay eventos publicados.</p> : proximos.map((item) => (
+          <div className="list-row" key={item.id}>
+            <strong>{item.titulo}</strong>
+            <span>{item.ciudadNombre} - {item.lugarNombre || "Lugar pendiente"}</span>
+          </div>
+        ))}
+      </section>
+    </section>
+  );
+}
+
+function LegalPanel({ onBack }) {
+  return (
+    <section className="screen">
+      <button className="back" onClick={onBack}>Volver</button>
+      <h2>Legal y seguridad</h2>
+      <section className="card stack">
+        <h3>Politica de privacidad</h3>
+        <p>BAILEMOS trata los datos de perfil, eventos, mensajes y actividad social para permitir que la comunidad conecte, organice planes de baile y mejore la experiencia.</p>
+        <p>No vendemos datos personales. Los usuarios pueden solicitar revision, bloqueo o eliminacion de su cuenta.</p>
+      </section>
+      <section className="card stack">
+        <h3>Terminos y condiciones</h3>
+        <p>El usuario debe usar BAILEMOS con respeto. No se permite acoso, suplantacion, contenido ofensivo, spam, fraude o uso comercial no autorizado.</p>
+        <p>Los eventos publicados por salas, academias u organizadores son responsabilidad de quien los publica.</p>
+      </section>
+      <section className="card stack">
+        <h3>Normas de comunidad</h3>
+        <p>Respeto, consentimiento y seguridad son obligatorios. BAILEMOS puede bloquear perfiles, ocultar contenido o limitar funciones si detecta abuso.</p>
+      </section>
+      <section className="card stack">
+        <h3>Pagos y entradas</h3>
+        <p>La compra de entradas y pagos premium se activara cuando la pasarela este conectada. Antes de cobrar, se mostraran precio, condiciones y politica de devolucion.</p>
+      </section>
+    </section>
+  );
+}
+
+function ProductReadinessPanel({ onBack }) {
+  const items = [
+    ["Base social", "Chat, amistad, bloqueo, valoraciones y recomendaciones ya estan en marcha."],
+    ["Eventos", "Busqueda, Voy/No voy/Interesado, asistentes, chat de evento y BailaCar funcionan sobre backend."],
+    ["Organizadores", "Ya existe portal para publicar eventos; falta verificacion comercial y panel de estadisticas."],
+    ["Legal", "Textos base visibles; falta revision juridica profesional antes de vender a gran escala."],
+    ["Pagos", "Pendiente conectar Stripe/TPV para entradas, premium o reservas."],
+    ["Eventos reales", "Pendiente importador definitivo desde fuentes externas y moderacion."],
+    ["App movil", "La PWA ya sirve para iPhone/Android; Android nativa debe sincronizarse con la web."]
+  ];
+
+  return (
+    <section className="screen">
+      <button className="back" onClick={onBack}>Volver</button>
+      <h2>Producto Pro</h2>
+      <p className="muted">Estado real de BAILEMOS para preparar venta, demos y colaboradores.</p>
+      <div className="card stack">
+        {items.map(([titulo, texto]) => (
+          <div className="readiness-row" key={titulo}>
+            <strong>{titulo}</strong>
+            <span>{texto}</span>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }
@@ -1323,6 +1608,9 @@ function ProfilePanel({ session, ciudades, authHeaders, onBack, onSaved }) {
     videoUrl: "",
     videoData: "",
     spotifyUrl: SPOTIFY_BAILEMOS_URL,
+    verificacionSolicitada: false,
+    perfilVerificado: false,
+    verificacionDescripcion: "",
     instagram: "",
     tiktok: "",
     youtube: ""
@@ -1347,6 +1635,9 @@ function ProfilePanel({ session, ciudades, authHeaders, onBack, onSaved }) {
           videoUrl: perfil.videoUrl || "",
           videoData: perfil.videoData || "",
           spotifyUrl: perfil.spotifyUrl || SPOTIFY_BAILEMOS_URL,
+          verificacionSolicitada: perfil.verificacionSolicitada || false,
+          perfilVerificado: perfil.perfilVerificado || false,
+          verificacionDescripcion: perfil.verificacionDescripcion || "",
           instagram: perfil.instagram || "",
           tiktok: perfil.tiktok || "",
           youtube: perfil.youtube || ""
@@ -1420,6 +1711,8 @@ function ProfilePanel({ session, ciudades, authHeaders, onBack, onSaved }) {
         videoUrl: form.videoUrl || null,
         videoData: form.videoData || null,
         spotifyUrl: form.spotifyUrl || null,
+        verificacionSolicitada: form.verificacionSolicitada,
+        verificacionDescripcion: form.verificacionDescripcion || null,
         instagram: form.instagram || null,
         tiktok: form.tiktok || null,
         youtube: form.youtube || null
@@ -1489,6 +1782,24 @@ function ProfilePanel({ session, ciudades, authHeaders, onBack, onSaved }) {
           <video className="profile-video" src={form.videoData || form.videoUrl} controls playsInline />
         )}
         <input value={form.spotifyUrl} onChange={(e) => setField("spotifyUrl", e.target.value)} placeholder="Playlist Spotify" />
+        <section className="verification-box">
+          <strong>{form.perfilVerificado ? "Perfil verificado" : form.verificacionSolicitada ? "Verificacion solicitada" : "Verificacion profesional"}</strong>
+          <p>Usa esto si eres profesor, DJ, fotografo, sala, academia u organizador.</p>
+          <textarea
+            value={form.verificacionDescripcion}
+            onChange={(e) => setField("verificacionDescripcion", e.target.value)}
+            placeholder="Describe tu actividad profesional, sala, academia, redes o experiencia."
+          />
+          <label className="check-row">
+            <input
+              type="checkbox"
+              checked={form.verificacionSolicitada}
+              onChange={(e) => setField("verificacionSolicitada", e.target.checked)}
+              disabled={form.perfilVerificado}
+            />
+            <span>Solicitar verificacion profesional</span>
+          </label>
+        </section>
         <input value={form.instagram} onChange={(e) => setField("instagram", e.target.value)} placeholder="Instagram" />
         <input value={form.tiktok} onChange={(e) => setField("tiktok", e.target.value)} placeholder="TikTok" />
         <input value={form.youtube} onChange={(e) => setField("youtube", e.target.value)} placeholder="YouTube" />
