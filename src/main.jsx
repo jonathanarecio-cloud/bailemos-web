@@ -14,6 +14,18 @@ const ciudadesIniciales = [
 
 const estilosDisponibles = ["BACHATA", "SALSA", "KIZOMBA", "MERENGUE", "URBANO", "OTRO"];
 const estilosEvento = ["BACHATA", "SALSA", "KIZOMBA", "OTRO"];
+const MAX_FOTO_MB = 3;
+const MAX_VIDEO_MB = 12;
+const SPOTIFY_BAILEMOS_URL = "https://open.spotify.com/search/bachata%20salsa%20kizomba";
+
+function leerArchivoComoDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 function App() {
   const [session, setSession] = useState(() => {
@@ -26,6 +38,7 @@ function App() {
   const [ciudades, setCiudades] = useState(ciudadesIniciales);
   const [ciudadActiva, setCiudadActiva] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [miPerfil, setMiPerfil] = useState(null);
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState("");
 
@@ -71,6 +84,13 @@ function App() {
       } catch {
         setCiudadActiva(null);
       }
+
+      try {
+        const perfilResponse = await api("/perfil/me", { headers: authHeaders });
+        setMiPerfil(perfilResponse);
+      } catch {
+        setMiPerfil(null);
+      }
     } catch {
       setNotice("No se pudieron cargar los datos. Prueba de nuevo.");
     } finally {
@@ -87,6 +107,7 @@ function App() {
   function cerrarSesion() {
     localStorage.removeItem("bailemos_session");
     setSession(null);
+    setMiPerfil(null);
     setScreen("welcome");
     setNotice("");
   }
@@ -133,7 +154,7 @@ function App() {
 
   return (
     <main className="app-shell">
-      <Header session={session} onLogout={cerrarSesion} />
+      <Header session={session} perfil={miPerfil} onLogout={cerrarSesion} />
       {notice && <button className="notice" onClick={() => setNotice("")}>{notice}</button>}
 
       {screen === "home" && (
@@ -154,6 +175,7 @@ function App() {
           onOpenPublish={() => setScreen("publish-event")}
           onOpenMagic={() => setScreen("magic")}
           onOpenRating={() => setScreen("rating")}
+          onOpenOrganizer={() => setScreen("organizer")}
           onOpenAdmin={() => setScreen("admin")}
           onOpenAttendees={() => setScreen("attendees")}
           onCiudad={marcarCiudad}
@@ -264,7 +286,22 @@ function App() {
             const updated = { ...session, nombre: perfil.nombre || session.nombre };
             localStorage.setItem("bailemos_session", JSON.stringify(updated));
             setSession(updated);
+            setMiPerfil(perfil);
             setNotice("Perfil actualizado.");
+            setScreen("home");
+          }}
+        />
+      )}
+
+      {screen === "organizer" && (
+        <OrganizerPortal
+          ciudades={ciudades}
+          authHeaders={authHeaders}
+          onBack={() => setScreen("home")}
+          onCreated={(created) => {
+            setNotice("Evento importado/publicado.");
+            setEvent(created);
+            cargarInicio();
             setScreen("home");
           }}
         />
@@ -435,13 +472,19 @@ function AuthCard({ title, onBack, children }) {
   );
 }
 
-function Header({ session, onLogout }) {
+function Header({ session, perfil, onLogout }) {
+  const fotoPerfil = perfil?.fotoData || perfil?.fotoUrl || "/bailemos_logo.jpeg";
+  const nombre = perfil?.nombreArtistico || session?.nombre || "bailador";
+
   return (
     <header className="topbar">
-      <img className="avatar" src="/bailemos_logo.jpeg" alt="" />
+      <div className="brand-stack">
+        <img className="mini-logo" src="/bailemos_logo.jpeg" alt="BAILEMOS!" />
+        <img className="avatar" src={fotoPerfil} alt={nombre} />
+      </div>
       <div>
-        <strong>Hola {session?.nombre || "bailador"}</strong>
-        <span>Hoy es un buen dia para bailar.</span>
+        <strong>Hola {nombre}</strong>
+        <span>Hoy es un buen dia para bailar. Vamos a ello.</span>
       </div>
       <button className="ghost" onClick={onLogout}>Salir</button>
     </header>
@@ -465,6 +508,7 @@ function Home({
   onOpenPublish,
   onOpenMagic,
   onOpenRating,
+  onOpenOrganizer,
   onOpenAdmin,
   onOpenAttendees,
   onCiudad,
@@ -485,6 +529,7 @@ function Home({
         <button onClick={onOpenMessages}>Mensajes</button>
         <button onClick={onOpenProfile}>Mi perfil</button>
         <button onClick={onOpenGeneralChat}>Chat general</button>
+        <button onClick={onOpenOrganizer}>Portal salas</button>
         <button onClick={onOpenRating}>Valorar</button>
         {esAdmin && <button onClick={onOpenAdmin}>Admin</button>}
       </div>
@@ -500,6 +545,12 @@ function Home({
         </div>
         <button className="secondary full-button" onClick={onOpenBailaCar}>BailaCar</button>
       </article>
+
+      <section className="card">
+        <h3>Playlist BAILEMOS</h3>
+        <p>Musica para calentar la pista: bachata, salsa y kizomba.</p>
+        <a className="primary link-button" href={SPOTIFY_BAILEMOS_URL} target="_blank" rel="noreferrer">Escuchar en Spotify</a>
+      </section>
 
       <section className="card">
         <h3>Estoy en una ciudad</h3>
@@ -884,6 +935,14 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage }) {
             {perfil.estilos.map((estilo) => <span key={estilo}>{estilo}</span>)}
           </div>
         )}
+        {(perfil?.videoData || perfil?.videoUrl) && (
+          <video className="profile-video" src={perfil.videoData || perfil.videoUrl} controls playsInline />
+        )}
+        {(perfil?.spotifyUrl || SPOTIFY_BAILEMOS_URL) && (
+          <a className="secondary link-button" href={perfil?.spotifyUrl || SPOTIFY_BAILEMOS_URL} target="_blank" rel="noreferrer">
+            Escuchar playlist
+          </a>
+        )}
       </article>
 
       <div className="quick-grid">
@@ -1003,6 +1062,8 @@ function ProfilePanel({ session, ciudades, authHeaders, onBack, onSaved }) {
     fotoUrl: "",
     fotoData: "",
     videoUrl: "",
+    videoData: "",
+    spotifyUrl: SPOTIFY_BAILEMOS_URL,
     instagram: "",
     tiktok: "",
     youtube: ""
@@ -1025,6 +1086,8 @@ function ProfilePanel({ session, ciudades, authHeaders, onBack, onSaved }) {
           fotoUrl: perfil.fotoUrl || "",
           fotoData: perfil.fotoData || "",
           videoUrl: perfil.videoUrl || "",
+          videoData: perfil.videoData || "",
+          spotifyUrl: perfil.spotifyUrl || SPOTIFY_BAILEMOS_URL,
           instagram: perfil.instagram || "",
           tiktok: perfil.tiktok || "",
           youtube: perfil.youtube || ""
@@ -1052,7 +1115,7 @@ function ProfilePanel({ session, ciudades, authHeaders, onBack, onSaved }) {
     }));
   }
 
-  function cargarFotoArchivo(event) {
+  async function cargarFotoArchivo(event) {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -1061,14 +1124,29 @@ function ProfilePanel({ session, ciudades, authHeaders, onBack, onSaved }) {
       return;
     }
 
-    if (file.size > 700 * 1024) {
-      alert("La foto es demasiado grande. Usa una imagen de menos de 700 KB.");
+    if (file.size > MAX_FOTO_MB * 1024 * 1024) {
+      alert(`La foto es demasiado grande. Usa una imagen de menos de ${MAX_FOTO_MB} MB.`);
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => setField("fotoData", reader.result);
-    reader.readAsDataURL(file);
+    setField("fotoData", await leerArchivoComoDataUrl(file));
+  }
+
+  async function cargarVideoArchivo(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!["video/mp4", "video/webm", "video/quicktime"].includes(file.type)) {
+      alert("El video debe ser MP4, WebM o MOV.");
+      return;
+    }
+
+    if (file.size > MAX_VIDEO_MB * 1024 * 1024) {
+      alert(`El video es demasiado grande. Usa un video corto de menos de ${MAX_VIDEO_MB} MB.`);
+      return;
+    }
+
+    setField("videoData", await leerArchivoComoDataUrl(file));
   }
 
   async function guardar(event) {
@@ -1081,6 +1159,8 @@ function ProfilePanel({ session, ciudades, authHeaders, onBack, onSaved }) {
         fotoUrl: form.fotoUrl || null,
         fotoData: form.fotoData || null,
         videoUrl: form.videoUrl || null,
+        videoData: form.videoData || null,
+        spotifyUrl: form.spotifyUrl || null,
         instagram: form.instagram || null,
         tiktok: form.tiktok || null,
         youtube: form.youtube || null
@@ -1138,10 +1218,18 @@ function ProfilePanel({ session, ciudades, authHeaders, onBack, onSaved }) {
         </div>
         <input value={form.fotoUrl} onChange={(e) => setField("fotoUrl", e.target.value)} placeholder="URL de foto de perfil" />
         <label className="file-picker">
-          Subir foto JPG/PNG
+          Subir foto JPG/PNG hasta {MAX_FOTO_MB} MB
           <input type="file" accept="image/jpeg,image/png" onChange={cargarFotoArchivo} />
         </label>
         <input value={form.videoUrl} onChange={(e) => setField("videoUrl", e.target.value)} placeholder="URL de video bailando" />
+        <label className="file-picker">
+          Subir video corto MP4/WebM/MOV hasta {MAX_VIDEO_MB} MB
+          <input type="file" accept="video/mp4,video/webm,video/quicktime" onChange={cargarVideoArchivo} />
+        </label>
+        {(form.videoData || form.videoUrl) && (
+          <video className="profile-video" src={form.videoData || form.videoUrl} controls playsInline />
+        )}
+        <input value={form.spotifyUrl} onChange={(e) => setField("spotifyUrl", e.target.value)} placeholder="Playlist Spotify" />
         <input value={form.instagram} onChange={(e) => setField("instagram", e.target.value)} placeholder="Instagram" />
         <input value={form.tiktok} onChange={(e) => setField("tiktok", e.target.value)} placeholder="TikTok" />
         <input value={form.youtube} onChange={(e) => setField("youtube", e.target.value)} placeholder="YouTube" />
@@ -1379,6 +1467,117 @@ function PublishEvent({ ciudades, authHeaders, onBack, onCreated }) {
           ))}
         </div>
         <button className="primary">Publicar evento</button>
+      </form>
+    </section>
+  );
+}
+
+function OrganizerPortal({ ciudades, authHeaders, onBack, onCreated }) {
+  const [texto, setTexto] = useState("");
+  const [form, setForm] = useState({
+    titulo: "",
+    descripcion: "",
+    ciudadId: ciudades[0]?.id || 1,
+    lugarNombre: "",
+    direccion: "",
+    fechaInicio: "",
+    fechaFin: "",
+    precio: "",
+    cartelUrl: "",
+    estilos: ["BACHATA"]
+  });
+
+  function setField(field, value) {
+    setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function toggleEstilo(estilo) {
+    setForm((current) => ({
+      ...current,
+      estilos: current.estilos.includes(estilo)
+        ? current.estilos.filter((item) => item !== estilo)
+        : [...current.estilos, estilo]
+    }));
+  }
+
+  function prepararDesdeTexto() {
+    const lineas = texto
+      .split("\n")
+      .map((linea) => linea.trim())
+      .filter(Boolean);
+    const primeraLinea = lineas[0] || "";
+    const url = texto.match(/https?:\/\/\S+/i)?.[0] || "";
+    const precio = texto.match(/(\d+([,.]\d{1,2})?)\s*(€|eur|euros)/i)?.[1]?.replace(",", ".") || "";
+    const estiloDetectado = estilosEvento.find((estilo) => texto.toUpperCase().includes(estilo)) || "BACHATA";
+
+    setForm((current) => ({
+      ...current,
+      titulo: current.titulo || primeraLinea || "Evento BAILEMOS",
+      descripcion: current.descripcion || texto,
+      precio: current.precio || precio,
+      cartelUrl: current.cartelUrl || url,
+      estilos: current.estilos?.length ? current.estilos : [estiloDetectado]
+    }));
+  }
+
+  async function submit(event) {
+    event.preventDefault();
+    const payload = {
+      ...form,
+      ciudadId: Number(form.ciudadId),
+      fechaInicio: form.fechaInicio,
+      fechaFin: form.fechaFin || null,
+      precio: form.precio ? Number(form.precio) : null,
+      latitud: null,
+      longitud: null,
+      cartelUrl: form.cartelUrl || null
+    };
+
+    const response = await fetch(`${API_URL}/eventos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      alert("No se pudo publicar el evento.");
+      return;
+    }
+
+    onCreated(await response.json());
+  }
+
+  return (
+    <section className="screen">
+      <button className="back" onClick={onBack}>Volver</button>
+      <h2>Portal de salas y organizadores</h2>
+      <p className="muted">Publica eventos reales o pega texto/enlace de una publicación para prepararlo más rápido.</p>
+
+      <section className="card stack">
+        <h3>Importar desde publicación</h3>
+        <textarea value={texto} onChange={(event) => setTexto(event.target.value)} placeholder="Pega aquí texto de Instagram, web, cartel o descripción del evento" />
+        <button className="secondary" type="button" onClick={prepararDesdeTexto}>Preparar evento con este texto</button>
+      </section>
+
+      <form className="card stack" onSubmit={submit}>
+        <h3>Datos del evento</h3>
+        <input value={form.titulo} onChange={(event) => setField("titulo", event.target.value)} placeholder="Nombre del evento" required />
+        <select value={form.ciudadId} onChange={(event) => setField("ciudadId", event.target.value)}>
+          {ciudades.map((ciudad) => <option key={ciudad.id} value={ciudad.id}>{ciudad.nombre}</option>)}
+        </select>
+        <input value={form.lugarNombre} onChange={(event) => setField("lugarNombre", event.target.value)} placeholder="Sala, disco, academia u organizador" />
+        <input value={form.direccion} onChange={(event) => setField("direccion", event.target.value)} placeholder="Dirección" />
+        <input value={form.fechaInicio} onChange={(event) => setField("fechaInicio", event.target.value)} type="datetime-local" required />
+        <input value={form.fechaFin} onChange={(event) => setField("fechaFin", event.target.value)} type="datetime-local" />
+        <input value={form.precio} onChange={(event) => setField("precio", event.target.value)} placeholder="Precio" inputMode="decimal" />
+        <input value={form.cartelUrl} onChange={(event) => setField("cartelUrl", event.target.value)} placeholder="URL del cartel, web o Instagram" />
+        <textarea value={form.descripcion} onChange={(event) => setField("descripcion", event.target.value)} placeholder="Descripción completa" />
+        <div className="chips">
+          {estilosEvento.map((estilo) => (
+            <button type="button" key={estilo} className={form.estilos.includes(estilo) ? "chip-active" : ""} onClick={() => toggleEstilo(estilo)}>{estilo}</button>
+          ))}
+        </div>
+        <button className="primary">Publicar evento real</button>
       </form>
     </section>
   );
