@@ -56,6 +56,7 @@ function App() {
   const [ciudades, setCiudades] = useState(ciudadesIniciales);
   const [ciudadActiva, setCiudadActiva] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [editingEvent, setEditingEvent] = useState(null);
   const [miPerfil, setMiPerfil] = useState(null);
   const [fotoPerfilInicio, setFotoPerfilInicio] = useState(() => localStorage.getItem(PROFILE_PHOTO_KEY) || "");
   const [loading, setLoading] = useState(false);
@@ -231,6 +232,10 @@ function App() {
           onOpenLegal={() => setScreen("legal")}
           onOpenNotifications={() => setScreen("notifications")}
           onOpenPro={() => setScreen("pro")}
+          onEditEvent={() => {
+            setEditingEvent(event);
+            setScreen("edit-event");
+          }}
           onOpenAttendees={() => setScreen("attendees")}
           onCiudad={marcarCiudad}
           authHeaders={authHeaders}
@@ -396,6 +401,22 @@ function App() {
           onCreated={(created) => {
             setNotice("Evento publicado.");
             setEvent(created);
+            cargarInicio();
+            setScreen("home");
+          }}
+        />
+      )}
+
+      {screen === "edit-event" && editingEvent && (
+        <PublishEvent
+          ciudades={ciudades}
+          authHeaders={authHeaders}
+          editingEvent={editingEvent}
+          onBack={() => setScreen("home")}
+          onCreated={(updated) => {
+            setNotice("Evento actualizado.");
+            setEvent(updated);
+            setEditingEvent(null);
             cargarInicio();
             setScreen("home");
           }}
@@ -831,10 +852,13 @@ function HomeView({
   onOpenLegal,
   onOpenNotifications,
   onOpenPro,
+  onEditEvent,
   onOpenAttendees,
   onCiudad
 }) {
   const esAdmin = session?.rol === "ADMIN" || session?.rol === "SUPER_ADMIN";
+  const puedeEditarEvento = Boolean(event && (esAdmin || Number(event.organizadorId) === Number(session?.usuarioId)));
+  const cartelActual = event?.cartelData || event?.cartelUrl || "";
   const [busqueda, setBusqueda] = useState("");
   const [busquedaActiva, setBusquedaActiva] = useState("");
 
@@ -903,8 +927,8 @@ function HomeView({
         <small>{event ? "Lugar elegido" : "BAILEMOS!"}</small>
         <h3>{loading ? "Cargando eventos..." : event ? (event.lugarNombre || event.titulo) : "No hay eventos publicados"}</h3>
         {event && <p className="event-title-line">{event.titulo} - {event.ciudadNombre}</p>}
-        {event?.cartelUrl ? (
-          <img className="event-poster" src={event.cartelUrl} alt={`Cartel de ${event.titulo}`} />
+        {cartelActual ? (
+          <img className="event-poster" src={cartelActual} alt={`Cartel de ${event.titulo}`} />
         ) : (
           <div className="event-poster empty-poster">Cartel pendiente</div>
         )}
@@ -923,6 +947,9 @@ function HomeView({
           <button className="secondary" onClick={onOpenChat}>{event ? "Chat evento" : "Chat general"}</button>
           <button className="secondary" onClick={onOpenBailaCar}>BailaCar</button>
         </div>
+        {puedeEditarEvento && (
+          <button className="secondary full-button" type="button" onClick={onEditEvent}>Editar evento</button>
+        )}
       </article>
 
       <section className="card">
@@ -1961,18 +1988,19 @@ function BailaCar({ onBack, event, authHeaders }) {
   );
 }
 
-function PublishEvent({ ciudades, authHeaders, onBack, onCreated }) {
+function PublishEvent({ ciudades, authHeaders, onBack, onCreated, editingEvent = null }) {
   const [form, setForm] = useState({
-    titulo: "",
-    descripcion: "",
-    ciudadId: ciudades[0]?.id || 1,
-    lugarNombre: "",
-    direccion: "",
-    fechaInicio: "",
-    fechaFin: "",
-    precio: "",
-    cartelUrl: "",
-    estilos: ["BACHATA"]
+    titulo: editingEvent?.titulo || "",
+    descripcion: editingEvent?.descripcion || "",
+    ciudadId: editingEvent?.ciudadId || ciudades[0]?.id || 1,
+    lugarNombre: editingEvent?.lugarNombre || "",
+    direccion: editingEvent?.direccion || "",
+    fechaInicio: editingEvent?.fechaInicio ? editingEvent.fechaInicio.slice(0, 16) : "",
+    fechaFin: editingEvent?.fechaFin ? editingEvent.fechaFin.slice(0, 16) : "",
+    precio: editingEvent?.precio ?? "",
+    cartelUrl: editingEvent?.cartelUrl || "",
+    cartelData: editingEvent?.cartelData || "",
+    estilos: editingEvent?.estilos?.length ? editingEvent.estilos : ["BACHATA"]
   });
   const [textoImportado, setTextoImportado] = useState("");
 
@@ -1987,6 +2015,18 @@ function PublishEvent({ ciudades, authHeaders, onBack, onCreated }) {
         ? current.estilos.filter((item) => item !== estilo)
         : [...current.estilos, estilo]
     }));
+  }
+
+  async function cargarCartelArchivo(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      alert("El cartel debe ser una imagen.");
+      return;
+    }
+
+    setField("cartelData", await leerArchivoComoDataUrl(file));
   }
 
   function prepararDesdeTexto() {
@@ -2018,17 +2058,18 @@ function PublishEvent({ ciudades, authHeaders, onBack, onCreated }) {
       precio: form.precio ? Number(form.precio) : null,
       latitud: null,
       longitud: null,
-      cartelUrl: form.cartelUrl || null
+      cartelUrl: form.cartelUrl || null,
+      cartelData: form.cartelData || null
     };
 
-    const response = await fetch(`${API_URL}/eventos`, {
-      method: "POST",
+    const response = await fetch(`${API_URL}/eventos${editingEvent?.id ? `/${editingEvent.id}` : ""}`, {
+      method: editingEvent?.id ? "PUT" : "POST",
       headers: { "Content-Type": "application/json", ...authHeaders },
       body: JSON.stringify(payload)
     });
 
     if (!response.ok) {
-      alert("No se pudo publicar el evento.");
+      alert(editingEvent ? "No se pudo actualizar el evento." : "No se pudo publicar el evento.");
       return;
     }
 
@@ -2038,7 +2079,7 @@ function PublishEvent({ ciudades, authHeaders, onBack, onCreated }) {
   return (
     <section className="screen">
       <button className="back" onClick={onBack}>Volver</button>
-      <h2>Publicar evento</h2>
+      <h2>{editingEvent ? "Editar evento" : "Publicar evento"}</h2>
       <section className="card stack">
         <h3>Detectar estilos automáticamente</h3>
         <textarea value={textoImportado} onChange={(event) => setTextoImportado(event.target.value)} placeholder="Pega texto del evento. Si pone Bachata, Salsa o Kizomba, BAILEMOS los marcará automáticamente." />
@@ -2055,13 +2096,20 @@ function PublishEvent({ ciudades, authHeaders, onBack, onCreated }) {
         <input value={form.fechaFin} onChange={(e) => setField("fechaFin", e.target.value)} type="datetime-local" />
         <input value={form.precio} onChange={(e) => setField("precio", e.target.value)} placeholder="Precio" inputMode="decimal" />
         <input value={form.cartelUrl} onChange={(e) => setField("cartelUrl", e.target.value)} placeholder="URL del cartel o Instagram" />
+        <label className="file-picker">
+          Subir cartel desde tu dispositivo
+          <input type="file" accept="image/*" onChange={cargarCartelArchivo} />
+        </label>
+        {(form.cartelData || form.cartelUrl) && (
+          <img className="event-poster" src={form.cartelData || form.cartelUrl} alt="Vista previa del cartel" />
+        )}
         <textarea value={form.descripcion} onChange={(e) => setField("descripcion", e.target.value)} placeholder="Descripción" />
         <div className="chips">
           {estilosEvento.map((estilo) => (
             <button type="button" key={estilo} className={form.estilos.includes(estilo) ? "chip-active" : ""} onClick={() => toggleEstilo(estilo)}>{estilo}</button>
           ))}
         </div>
-        <button className="primary">Publicar evento</button>
+        <button className="primary">{editingEvent ? "Guardar cambios" : "Publicar evento"}</button>
       </form>
     </section>
   );
@@ -2079,6 +2127,7 @@ function OrganizerPortal({ ciudades, authHeaders, onBack, onCreated }) {
     fechaFin: "",
     precio: "",
     cartelUrl: "",
+    cartelData: "",
     estilos: ["BACHATA"]
   });
 
@@ -2093,6 +2142,18 @@ function OrganizerPortal({ ciudades, authHeaders, onBack, onCreated }) {
         ? current.estilos.filter((item) => item !== estilo)
         : [...current.estilos, estilo]
     }));
+  }
+
+  async function cargarCartelPortalArchivo(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      alert("El cartel debe ser una imagen.");
+      return;
+    }
+
+    setField("cartelData", await leerArchivoComoDataUrl(file));
   }
 
   function prepararDesdeTexto() {
@@ -2124,7 +2185,8 @@ function OrganizerPortal({ ciudades, authHeaders, onBack, onCreated }) {
       precio: form.precio ? Number(form.precio) : null,
       latitud: null,
       longitud: null,
-      cartelUrl: form.cartelUrl || null
+      cartelUrl: form.cartelUrl || null,
+      cartelData: form.cartelData || null
     };
 
     const response = await fetch(`${API_URL}/eventos`, {
@@ -2165,6 +2227,13 @@ function OrganizerPortal({ ciudades, authHeaders, onBack, onCreated }) {
         <input value={form.fechaFin} onChange={(event) => setField("fechaFin", event.target.value)} type="datetime-local" />
         <input value={form.precio} onChange={(event) => setField("precio", event.target.value)} placeholder="Precio" inputMode="decimal" />
         <input value={form.cartelUrl} onChange={(event) => setField("cartelUrl", event.target.value)} placeholder="URL del cartel, web o Instagram" />
+        <label className="file-picker">
+          Subir cartel desde tu dispositivo
+          <input type="file" accept="image/*" onChange={cargarCartelPortalArchivo} />
+        </label>
+        {(form.cartelData || form.cartelUrl) && (
+          <img className="event-poster" src={form.cartelData || form.cartelUrl} alt="Vista previa del cartel" />
+        )}
         <textarea value={form.descripcion} onChange={(event) => setField("descripcion", event.target.value)} placeholder="Descripción completa" />
         <div className="chips">
           {estilosEvento.map((estilo) => (
