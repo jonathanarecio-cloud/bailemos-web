@@ -764,6 +764,7 @@ function Home({
   authHeaders
 }) {
   const esAdmin = session?.rol === "ADMIN" || session?.rol === "SUPER_ADMIN";
+  const esPerfilProfesional = ["PROFESIONAL", "ORGANIZADOR", "ACADEMIA", "SALA", "ADMIN", "SUPER_ADMIN"].includes(session?.rol);
 
   return (
     <section className="screen">
@@ -772,13 +773,13 @@ function Home({
       <input className="search" placeholder="Buscar eventos, ciudades o salas" />
 
       <div className="quick-grid">
-        <button onClick={onOpenPublish}>Publicar evento</button>
+        {esPerfilProfesional && <button onClick={onOpenPublish}>Publicar evento</button>}
         <button onClick={onOpenMagic}>Haz tu magia</button>
         <button onClick={onOpenPeople}>Gente</button>
         <button onClick={onOpenMessages}>Mensajes</button>
         <button onClick={onOpenProfile}>Mi perfil</button>
         <button onClick={onOpenGeneralChat}>Chat general</button>
-        <button onClick={onOpenOrganizer}>Portal salas</button>
+        {esPerfilProfesional && <button onClick={onOpenOrganizer}>Portal salas</button>}
         <button onClick={onOpenRating}>Valorar</button>
         {esAdmin && <button onClick={onOpenAdmin}>Admin</button>}
       </div>
@@ -857,7 +858,8 @@ function HomeView({
   onCiudad
 }) {
   const esAdmin = session?.rol === "ADMIN" || session?.rol === "SUPER_ADMIN";
-  const puedeEditarEvento = Boolean(event && (esAdmin || Number(event.organizadorId) === Number(session?.usuarioId)));
+  const esPerfilProfesional = ["PROFESIONAL", "ORGANIZADOR", "ACADEMIA", "SALA", "ADMIN", "SUPER_ADMIN"].includes(session?.rol);
+  const puedeEditarEvento = Boolean(event && esPerfilProfesional && (esAdmin || Number(event.organizadorId) === Number(session?.usuarioId)));
   const cartelActual = event?.cartelData || event?.cartelUrl || "";
   const [busqueda, setBusqueda] = useState("");
   const [busquedaActiva, setBusquedaActiva] = useState("");
@@ -909,13 +911,13 @@ function HomeView({
       </form>
 
       <div className="quick-grid">
-        <button onClick={onOpenPublish}>Publicar evento</button>
+        {esPerfilProfesional && <button onClick={onOpenPublish}>Publicar evento</button>}
         <button onClick={onOpenMagic}>Haz tu magia</button>
         <button onClick={onOpenPeople}>Gente</button>
         <button onClick={onOpenMessages}>Mensajes</button>
         <button onClick={onOpenProfile}>Mi perfil</button>
         <button onClick={onOpenGeneralChat}>Chat general</button>
-        <button onClick={onOpenOrganizer}>Portal salas</button>
+        {esPerfilProfesional && <button onClick={onOpenOrganizer}>Portal salas</button>}
         <button onClick={onOpenRating}>Valorar</button>
         <button onClick={onOpenNotifications}>Notificaciones</button>
         <button onClick={onOpenLegal}>Legal</button>
