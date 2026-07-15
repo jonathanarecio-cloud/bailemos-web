@@ -1718,8 +1718,12 @@ function MessagesPanel({ authHeaders, onBack, onOpen, onUpdated }) {
     cargar();
   }, []);
 
-  async function responderSolicitud(solicitudId, accion) {
-    const response = await fetch(`${API_URL}/social/amistad/solicitudes/${solicitudId}/${accion}`, {
+  async function responderSolicitud(solicitud, accion) {
+    const url = accion === "aceptar"
+      ? `${API_URL}/social/usuario/${solicitud.usuarioId}/solicitud-amistad/aceptar`
+      : `${API_URL}/social/amistad/solicitudes/${solicitud.id}/${accion}`;
+
+    const response = await fetch(url, {
       method: "POST",
       headers: authHeaders
     });
@@ -1750,8 +1754,8 @@ function MessagesPanel({ authHeaders, onBack, onOpen, onUpdated }) {
                 <small>{solicitud.rol}</small>
               </span>
               <div className="mini-actions">
-                <button className="primary compact" onClick={() => responderSolicitud(solicitud.id, "aceptar")}>Aceptar</button>
-                <button className="secondary compact" onClick={() => responderSolicitud(solicitud.id, "rechazar")}>Rechazar</button>
+                <button className="primary compact" onClick={() => responderSolicitud(solicitud, "aceptar")}>Aceptar</button>
+                <button className="secondary compact" onClick={() => responderSolicitud(solicitud, "rechazar")}>Rechazar</button>
               </div>
             </div>
           ))
