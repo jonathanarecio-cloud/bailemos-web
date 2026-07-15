@@ -59,6 +59,7 @@ function App() {
   const [editingEvent, setEditingEvent] = useState(null);
   const [miPerfil, setMiPerfil] = useState(null);
   const [fotoPerfilInicio, setFotoPerfilInicio] = useState(() => localStorage.getItem(PROFILE_PHOTO_KEY) || "");
+  const [avisosMensajes, setAvisosMensajes] = useState(0);
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState("");
 
@@ -73,7 +74,10 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (session) cargarInicio();
+    if (session) {
+      cargarInicio();
+      cargarAvisos();
+    }
   }, [session]);
 
   async function api(path, options = {}) {
@@ -126,6 +130,22 @@ function App() {
     }
   }
 
+  async function cargarAvisos() {
+    if (!session?.token) {
+      setAvisosMensajes(0);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/social/amistad/solicitudes`, { headers: authHeaders });
+      if (!response.ok) throw new Error();
+      const solicitudes = await response.json();
+      setAvisosMensajes(solicitudes.length || 0);
+    } catch {
+      setAvisosMensajes(0);
+    }
+  }
+
   function guardarSesion(data) {
     localStorage.setItem("bailemos_session", JSON.stringify(data));
     setSession(data);
@@ -138,6 +158,7 @@ function App() {
     setSession(null);
     setMiPerfil(null);
     setFotoPerfilInicio("");
+    setAvisosMensajes(0);
     setScreen("welcome");
     setNotice("");
   }
@@ -222,6 +243,7 @@ function App() {
           onOpenGeneralChat={() => setScreen("general-chat")}
           onOpenPeople={() => setScreen("people")}
           onOpenMessages={() => setScreen("messages")}
+          avisosMensajes={avisosMensajes}
           onOpenProfile={() => setScreen("profile")}
           onOpenBailaCar={() => setScreen("bailacar")}
           onOpenPublish={() => setScreen("publish-event")}
@@ -351,6 +373,7 @@ function App() {
             });
             setScreen("private-chat");
           }}
+          onUpdated={cargarAvisos}
         />
       )}
 
@@ -763,6 +786,7 @@ function Home({
   onOpenGeneralChat,
   onOpenPeople,
   onOpenMessages,
+  avisosMensajes = 0,
   onOpenProfile,
   onOpenBailaCar,
   onOpenPublish,
@@ -787,7 +811,10 @@ function Home({
         {esPerfilProfesional && <button onClick={onOpenPublish}>Publicar evento</button>}
         <button onClick={onOpenMagic}>Haz tu magia</button>
         <button onClick={onOpenPeople}>Gente</button>
-        <button onClick={onOpenMessages}>Mensajes</button>
+        <button className={avisosMensajes > 0 ? "with-badge" : ""} onClick={onOpenMessages}>
+          Mensajes
+          {avisosMensajes > 0 && <span className="badge">{avisosMensajes}</span>}
+        </button>
         <button onClick={onOpenProfile}>Mi perfil</button>
         <button onClick={onOpenGeneralChat}>Chat general</button>
         {esPerfilProfesional && <button onClick={onOpenOrganizer}>Portal salas</button>}
@@ -854,6 +881,7 @@ function HomeView({
   onOpenGeneralChat,
   onOpenPeople,
   onOpenMessages,
+  avisosMensajes = 0,
   onOpenProfile,
   onOpenBailaCar,
   onOpenPublish,
@@ -926,7 +954,10 @@ function HomeView({
         {esPerfilProfesional && <button onClick={onOpenPublish}>Publicar evento</button>}
         <button onClick={onOpenMagic}>Haz tu magia</button>
         <button onClick={onOpenPeople}>Gente</button>
-        <button onClick={onOpenMessages}>Mensajes</button>
+        <button className={avisosMensajes > 0 ? "with-badge" : ""} onClick={onOpenMessages}>
+          Mensajes
+          {avisosMensajes > 0 && <span className="badge">{avisosMensajes}</span>}
+        </button>
         <button onClick={onOpenProfile}>Mi perfil</button>
         <button onClick={onOpenGeneralChat}>Chat general</button>
         {esPerfilProfesional && <button onClick={onOpenOrganizer}>Portal salas</button>}
@@ -1657,7 +1688,7 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage }) {
   );
 }
 
-function MessagesPanel({ authHeaders, onBack, onOpen }) {
+function MessagesPanel({ authHeaders, onBack, onOpen, onUpdated }) {
   const [chats, setChats] = useState([]);
   const [solicitudes, setSolicitudes] = useState([]);
 
@@ -1669,6 +1700,7 @@ function MessagesPanel({ authHeaders, onBack, onOpen }) {
       ]);
       setChats(chatsResponse.ok ? await chatsResponse.json() : []);
       setSolicitudes(solicitudesResponse.ok ? await solicitudesResponse.json() : []);
+      onUpdated?.();
     } catch {
       setChats([]);
       setSolicitudes([]);
@@ -1690,7 +1722,8 @@ function MessagesPanel({ authHeaders, onBack, onOpen }) {
       return;
     }
 
-    cargar();
+    await cargar();
+    alert(accion === "aceptar" ? "Solicitud aceptada. Ya sois amigos y podéis chatear." : "Solicitud rechazada.");
   }
 
   return (
@@ -1722,7 +1755,7 @@ function MessagesPanel({ authHeaders, onBack, onOpen }) {
           <p className="muted">Aún no tienes conversaciones. Entra en Gente y escribe a alguien.</p>
         ) : (
           chats.map((chat) => (
-            <button className="conversation-row" key={chat.chatId} onClick={() => onOpen(chat)}>
+            <button className="conversation-row" key={`${chat.chatId || "amigo"}-${chat.otroUsuarioId}`} onClick={() => onOpen(chat)}>
               <span>
                 <strong>{chat.otroUsuarioNombre}</strong>
                 <small>{chat.otroUsuarioRol}</small>

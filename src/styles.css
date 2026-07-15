@@ -146,6 +146,29 @@ h3 {
   border: 1px solid rgba(255, 117, 66, 0.55);
 }
 
+.with-badge {
+  position: relative;
+  border-color: rgba(242, 23, 91, 0.95) !important;
+  box-shadow: 0 0 0 1px rgba(242, 23, 91, 0.25), 0 0 18px rgba(242, 23, 91, 0.22);
+}
+
+.badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  min-width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f2175b, #ff7a2f);
+  border: 2px solid #050505;
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
 .ghost {
   margin-left: auto;
   background: transparent;
