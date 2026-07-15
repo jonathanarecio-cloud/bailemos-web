@@ -354,6 +354,7 @@ function App() {
           events={events}
           authHeaders={authHeaders}
           onBack={() => setScreen("people")}
+          onOpenMessages={() => setScreen("messages")}
           onMessage={(persona) => {
             setSelectedUser(persona);
             setScreen("private-chat");
@@ -1470,7 +1471,7 @@ function PeoplePanel({ authHeaders, onBack, onOpenProfile, onMessage, onRate }) 
   );
 }
 
-function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage }) {
+function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage, onOpenMessages }) {
   const [perfil, setPerfil] = useState(null);
   const [social, setSocial] = useState(null);
   const [valoraciones, setValoraciones] = useState([]);
@@ -1532,8 +1533,8 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage }) {
 
   function textoBotonAmistad() {
     if (social?.amigoMio) return "Quitar amigo";
-    if (social?.solicitudAmistadEnviada) return "Solicitud enviada";
-    if (social?.solicitudAmistadRecibida) return "Te envió solicitud";
+    if (social?.solicitudAmistadEnviada) return "Cancelar solicitud";
+    if (social?.solicitudAmistadRecibida) return "Responder solicitud";
     return "Enviar solicitud de amistad";
   }
 
@@ -1543,8 +1544,14 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage }) {
       return;
     }
 
-    if (social?.solicitudAmistadEnviada || social?.solicitudAmistadRecibida) {
-      alert("La solicitud ya está pendiente. Revisa Mensajes para aceptar o rechazar.");
+    if (social?.solicitudAmistadEnviada) {
+      accionSocial(`/social/usuario/${user.usuarioId}/solicitud-amistad`, "DELETE");
+      return;
+    }
+
+    if (social?.solicitudAmistadRecibida) {
+      alert("Te envio una solicitud. Entra en Mensajes para aceptar o rechazar.");
+      onOpenMessages?.();
       return;
     }
 
