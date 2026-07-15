@@ -1213,6 +1213,7 @@ function AdminPanel({ authHeaders, session, onBack }) {
 
     if (!response.ok) {
       alert(await leerErrorServidor(response, "No se pudo cambiar el rol del usuario."));
+      cargar();
       return;
     }
 
