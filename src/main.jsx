@@ -1204,6 +1204,21 @@ function AdminPanel({ authHeaders, session, onBack }) {
     cargar();
   }
 
+  async function cambiarRolUsuario(usuarioId, rol) {
+    const response = await fetch(`${API_URL}/admin/usuarios/${usuarioId}/rol`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders },
+      body: JSON.stringify({ rol })
+    });
+
+    if (!response.ok) {
+      alert(await leerErrorServidor(response, "No se pudo cambiar el rol del usuario."));
+      return;
+    }
+
+    cargar();
+  }
+
   return (
     <section className="screen">
       <button className="back" onClick={onBack}>Volver</button>
@@ -1235,6 +1250,16 @@ function AdminPanel({ authHeaders, session, onBack }) {
               <small>{usuario.email} - {usuario.rol} - {usuario.activo ? "Activo" : "Desactivado"}</small>
             </span>
             <div className="mini-actions">
+              {esSuperAdmin && usuario.rol !== "SUPER_ADMIN" && (
+                <select className="compact-select" value={usuario.rol} onChange={(event) => cambiarRolUsuario(usuario.id, event.target.value)}>
+                  <option value="BAILADOR">Bailador</option>
+                  <option value="PROFESIONAL">Profesional</option>
+                  <option value="ORGANIZADOR">Organizador</option>
+                  <option value="SALA">Sala</option>
+                  <option value="ACADEMIA">Academia</option>
+                  <option value="ADMIN">Admin</option>
+                </select>
+              )}
               {usuario.activo ? (
                 <button className="secondary compact" onClick={() => accionAdmin(`/admin/usuarios/${usuario.id}`, "DELETE", "No se pudo desactivar el usuario.")}>Desactivar</button>
               ) : (

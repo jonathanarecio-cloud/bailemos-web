@@ -451,6 +451,13 @@ h3 {
   font-size: 0.85rem;
 }
 
+.compact-select {
+  min-height: 38px;
+  max-width: 150px;
+  padding: 0 10px;
+  font-size: 0.85rem;
+}
+
 .list-row:last-child {
   border-bottom: 0;
 }
