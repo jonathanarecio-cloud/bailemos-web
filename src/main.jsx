@@ -1723,10 +1723,17 @@ function MessagesPanel({ authHeaders, onBack, onOpen, onUpdated }) {
       ? `${API_URL}/social/usuario/${solicitud.usuarioId}/solicitud-amistad/aceptar`
       : `${API_URL}/social/amistad/solicitudes/${solicitud.id}/${accion}`;
 
-    const response = await fetch(url, {
+    let response = await fetch(url, {
       method: "POST",
       headers: authHeaders
     });
+
+    if (!response.ok && accion === "aceptar") {
+      response = await fetch(`${API_URL}/social/amistad/solicitudes/${solicitud.id}/aceptar`, {
+        method: "POST",
+        headers: authHeaders
+      });
+    }
 
     if (!response.ok) {
       alert(await leerErrorServidor(response, "No se pudo responder la solicitud."));
