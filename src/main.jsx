@@ -232,6 +232,7 @@ function App() {
           onOpenLegal={() => setScreen("legal")}
           onOpenNotifications={() => setScreen("notifications")}
           onOpenPro={() => setScreen("pro")}
+          onOpenEventDetail={() => setScreen("event-detail")}
           onEditEvent={() => {
             setEditingEvent(event);
             setScreen("edit-event");
@@ -249,6 +250,16 @@ function App() {
       )}
 
       {screen === "pro" && <ProductReadinessPanel onBack={() => setScreen("home")} />}
+
+      {screen === "event-detail" && event && (
+        <EventDetailPanel
+          event={event}
+          onBack={() => setScreen("home")}
+          onOpenAttendees={() => setScreen("attendees")}
+          onOpenChat={() => setScreen("event-chat")}
+          onOpenBailaCar={() => setScreen("bailacar")}
+        />
+      )}
 
       {screen === "attendees" && event && (
         <AttendeesPanel
@@ -853,6 +864,7 @@ function HomeView({
   onOpenLegal,
   onOpenNotifications,
   onOpenPro,
+  onOpenEventDetail,
   onEditEvent,
   onOpenAttendees,
   onCiudad
@@ -945,10 +957,11 @@ function HomeView({
           <button className="secondary" onClick={onNoVoy} disabled={!event}>No voy</button>
         </div>
         <div className="actions">
+          <button className="secondary" onClick={onOpenEventDetail} disabled={!event}>Ver mas</button>
           <button className="secondary" onClick={onOpenAttendees} disabled={!event}>Quien va</button>
           <button className="secondary" onClick={onOpenChat}>{event ? "Chat evento" : "Chat general"}</button>
-          <button className="secondary" onClick={onOpenBailaCar}>BailaCar</button>
         </div>
+        <button className="secondary full-button" onClick={onOpenBailaCar}>BailaCar</button>
         {puedeEditarEvento && (
           <button className="secondary full-button" type="button" onClick={onEditEvent}>Editar evento</button>
         )}
@@ -1061,6 +1074,78 @@ function AttendeesPanel({ event, authHeaders, onBack, onOpenProfile }) {
         ))
       )}
       </div>
+    </section>
+  );
+}
+
+function EventDetailPanel({ event, onBack, onOpenAttendees, onOpenChat, onOpenBailaCar }) {
+  const cartel = event?.cartelData || event?.cartelUrl || "";
+  const fechaInicio = event?.fechaInicio ? new Date(event.fechaInicio).toLocaleString("es-ES") : "Fecha pendiente";
+  const fechaFin = event?.fechaFin ? new Date(event.fechaFin).toLocaleString("es-ES") : "Sin hora de fin";
+  const precio = event?.precio === null || event?.precio === undefined ? "Precio no indicado" : `${event.precio} €`;
+
+  return (
+    <section className="screen">
+      <button className="back" onClick={onBack}>Volver</button>
+      <h2>Informacion del evento</h2>
+      <article className="card feature-card">
+        <small>{event.ciudadNombre}</small>
+        <h3>{event.titulo}</h3>
+        {cartel ? (
+          <img className="event-poster" src={cartel} alt={`Cartel de ${event.titulo}`} />
+        ) : (
+          <div className="event-poster empty-poster">Cartel pendiente</div>
+        )}
+        <div className="detail-grid">
+          <div>
+            <strong>Sala o lugar</strong>
+            <span>{event.lugarNombre || "Lugar pendiente"}</span>
+          </div>
+          <div>
+            <strong>Ciudad</strong>
+            <span>{event.ciudadNombre}</span>
+          </div>
+          <div>
+            <strong>Direccion</strong>
+            <span>{event.direccion || "Direccion pendiente"}</span>
+          </div>
+          <div>
+            <strong>Inicio</strong>
+            <span>{fechaInicio}</span>
+          </div>
+          <div>
+            <strong>Fin</strong>
+            <span>{fechaFin}</span>
+          </div>
+          <div>
+            <strong>Precio</strong>
+            <span>{precio}</span>
+          </div>
+          <div>
+            <strong>Estilos</strong>
+            <span>{event.estilos?.join(" / ") || "No indicado"}</span>
+          </div>
+          <div>
+            <strong>Personas que van</strong>
+            <span>{event.asistentes || 0}</span>
+          </div>
+          <div>
+            <strong>Organizador</strong>
+            <span>{event.organizadorNombre || "Organizador pendiente"}</span>
+          </div>
+        </div>
+        {event.descripcion && (
+          <section className="event-description">
+            <strong>Descripcion</strong>
+            <p>{event.descripcion}</p>
+          </section>
+        )}
+        <div className="actions">
+          <button className="secondary" onClick={onOpenAttendees}>Quien va</button>
+          <button className="secondary" onClick={onOpenChat}>Chat evento</button>
+          <button className="secondary" onClick={onOpenBailaCar}>BailaCar</button>
+        </div>
+      </article>
     </section>
   );
 }

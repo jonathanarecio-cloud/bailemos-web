@@ -390,6 +390,31 @@ h3 {
   color: #ffb18c;
 }
 
+.detail-grid {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.detail-grid div,
+.event-description {
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.detail-grid strong,
+.event-description strong {
+  color: #ffb18c;
+}
+
+.detail-grid span {
+  color: #ffffff;
+}
+
 .person-link {
   background: transparent;
   color: #ffffff;
