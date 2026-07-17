@@ -18,6 +18,26 @@ const MAX_FOTO_MB = 5;
 const MAX_VIDEO_MB = 25;
 const SPOTIFY_BAILEMOS_URL = "https://open.spotify.com/search/bachata%20salsa%20kizomba";
 const PROFILE_PHOTO_KEY = "bailemos_profile_photo";
+const EVENTS_CACHE_KEY = "bailemos_events_cache";
+const CITIES_CACHE_KEY = "bailemos_cities_cache";
+const PROFILE_CACHE_KEY = "bailemos_profile_cache";
+
+function storageGet(key, fallback) {
+  try {
+    const value = localStorage.getItem(key);
+    return value ? JSON.parse(value) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function storageSet(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Si el dispositivo no permite guardar mas datos, la app sigue funcionando sin cache.
+  }
+}
 
 function leerArchivoComoDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -51,13 +71,13 @@ function App() {
     return saved ? JSON.parse(saved) : null;
   });
   const [screen, setScreen] = useState(session ? "home" : "welcome");
-  const [events, setEvents] = useState([]);
+  const [events, setEvents] = useState(() => storageGet(EVENTS_CACHE_KEY, []));
   const [event, setEvent] = useState(null);
-  const [ciudades, setCiudades] = useState(ciudadesIniciales);
+  const [ciudades, setCiudades] = useState(() => storageGet(CITIES_CACHE_KEY, ciudadesIniciales));
   const [ciudadActiva, setCiudadActiva] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [editingEvent, setEditingEvent] = useState(null);
-  const [miPerfil, setMiPerfil] = useState(null);
+  const [miPerfil, setMiPerfil] = useState(() => storageGet(PROFILE_CACHE_KEY, null));
   const [fotoPerfilInicio, setFotoPerfilInicio] = useState(() => localStorage.getItem(PROFILE_PHOTO_KEY) || "");
   const [avisosMensajes, setAvisosMensajes] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -75,6 +95,7 @@ function App() {
 
   useEffect(() => {
     if (session) {
+      if (!event && events.length) setEvent(events[0]);
       cargarInicio();
       cargarAvisos();
     }
@@ -95,33 +116,42 @@ function App() {
   }
 
   async function cargarInicio() {
-    setLoading(true);
+    setLoading(events.length === 0);
     try {
-      const [eventosData, ciudadesData] = await Promise.all([api("/eventos"), api("/ciudades")]);
-      setEvents(eventosData || []);
-      setEvent((actual) => {
-        if (!eventosData?.length) return null;
-        return eventosData.find((item) => Number(item.id) === Number(actual?.id)) || eventosData[0];
-      });
-      setCiudades(ciudadesData?.length ? ciudadesData : ciudadesIniciales);
+      const [eventosResult, ciudadesResult, activaResult, perfilResult] = await Promise.allSettled([
+        api("/eventos"),
+        api("/ciudades"),
+        api("/usuarios/ciudad-activa/me", { headers: authHeaders }),
+        api("/perfil/me", { headers: authHeaders })
+      ]);
 
-      try {
-        const activa = await api("/usuarios/ciudad-activa/me", { headers: authHeaders });
-        setCiudadActiva(activa);
-      } catch {
-        setCiudadActiva(null);
+      if (eventosResult.status === "fulfilled") {
+        const eventosData = eventosResult.value || [];
+        setEvents(eventosData);
+        storageSet(EVENTS_CACHE_KEY, eventosData);
+        setEvent((actual) => {
+          if (!eventosData.length) return null;
+          return eventosData.find((item) => Number(item.id) === Number(actual?.id)) || eventosData[0];
+        });
       }
 
-      try {
-        const perfilResponse = await api("/perfil/me", { headers: authHeaders });
+      if (ciudadesResult.status === "fulfilled") {
+        const ciudadesData = ciudadesResult.value?.length ? ciudadesResult.value : ciudadesIniciales;
+        setCiudades(ciudadesData);
+        storageSet(CITIES_CACHE_KEY, ciudadesData);
+      }
+
+      setCiudadActiva(activaResult.status === "fulfilled" ? activaResult.value : null);
+
+      if (perfilResult.status === "fulfilled") {
+        const perfilResponse = perfilResult.value;
         setMiPerfil(perfilResponse);
+        storageSet(PROFILE_CACHE_KEY, perfilResponse);
         const foto = perfilResponse?.fotoData || perfilResponse?.fotoUrl || "";
         if (foto) {
           localStorage.setItem(PROFILE_PHOTO_KEY, foto);
           setFotoPerfilInicio(foto);
         }
-      } catch {
-        setMiPerfil(null);
       }
     } catch {
       setNotice("No se pudieron cargar los datos. Prueba de nuevo.");
@@ -155,6 +185,7 @@ function App() {
   function cerrarSesion() {
     localStorage.removeItem("bailemos_session");
     localStorage.removeItem(PROFILE_PHOTO_KEY);
+    localStorage.removeItem(PROFILE_CACHE_KEY);
     setSession(null);
     setMiPerfil(null);
     setFotoPerfilInicio("");
@@ -902,6 +933,7 @@ function HomeView({
   onOpenChat,
   onOpenGeneralChat,
   onOpenPeople,
+  onOpenFriends,
   onOpenMessages,
   avisosMensajes = 0,
   onOpenProfile,
@@ -961,6 +993,18 @@ function HomeView({
   return (
     <section className="screen">
       <div className="accent" />
+      <section className="home-status">
+        <div>
+          <small>BAILEMOS hoy</small>
+          <strong>{events.length}</strong>
+          <span>{events.length === 1 ? "evento disponible" : "eventos disponibles"}</span>
+        </div>
+        <div>
+          <small>Mensajes</small>
+          <strong>{avisosMensajes}</strong>
+          <span>{avisosMensajes === 1 ? "aviso pendiente" : "avisos pendientes"}</span>
+        </div>
+      </section>
       <h2>Donde se baila hoy</h2>
       <form className="search-row" onSubmit={buscarEventos}>
         <input
@@ -973,9 +1017,12 @@ function HomeView({
       </form>
 
       <div className="quick-grid">
+        <button className="primary" onClick={onOpenEventDetail} disabled={!event}>Evento elegido</button>
+        <button className="primary" onClick={onVoy} disabled={!event}>Voy</button>
         {esPerfilProfesional && <button onClick={onOpenPublish}>Publicar evento</button>}
         <button onClick={onOpenMagic}>Haz tu magia</button>
         <button onClick={onOpenPeople}>Gente</button>
+        <button onClick={onOpenFriends}>Mis amigos</button>
         <button className={avisosMensajes > 0 ? "with-badge" : ""} onClick={onOpenMessages}>
           Mensajes
           {avisosMensajes > 0 && <span className="badge">{avisosMensajes}</span>}
@@ -1040,7 +1087,7 @@ function HomeView({
         <h3>{busquedaActiva ? `Resultados para "${busquedaActiva}"` : "Eventos disponibles"}</h3>
         <div className="list">
           {eventosFiltrados.length === 0 && <p className="muted">No hay fiestas para esa busqueda todavia. Publica una o prueba otra ciudad.</p>}
-          {eventosFiltrados.map((item) => (
+          {eventosFiltrados.slice(0, 8).map((item) => (
             <button key={item.id} className={`list-row event-result ${Number(item.id) === Number(event?.id) ? "active" : ""}`} onClick={() => elegirEvento(item)}>
               <strong>{item.titulo}</strong>
               <span>{item.ciudadNombre} - {item.lugarNombre || "Lugar pendiente"} - Van {item.asistentes || 0}</span>
