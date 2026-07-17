@@ -469,6 +469,7 @@ function App() {
         notificationPermission={notificationPermission}
         onEnableNotifications={activarNotificaciones}
         onOpenMessages={abrirMensajes}
+        onOpenProfile={() => setScreen("profile")}
         onLogout={cerrarSesion}
       />
       {notice && <button className="notice" onClick={() => setNotice("")}>{notice}</button>}
@@ -1074,6 +1075,7 @@ function Header({
   notificationPermission,
   onEnableNotifications,
   onOpenMessages,
+  onOpenProfile,
   onLogout
 }) {
   const fotoPerfil = perfil?.fotoData || perfil?.fotoUrl || fotoPerfilInicio || "/bailemos_logo.jpeg";
@@ -1082,8 +1084,10 @@ function Header({
 
   return (
     <header className="topbar">
-      <img className="header-profile-photo" src={fotoPerfil} alt={nombre} />
-      <div className="hello-copy">
+      <button className="profile-header-button" type="button" onClick={onOpenProfile}>
+        <img className="header-profile-photo" src={fotoPerfil} alt={nombre} />
+      </button>
+      <div className="hello-copy" onClick={onOpenProfile} role="button" tabIndex={0}>
         <strong>Hola {nombre}</strong>
         <span>Hoy es un buen dia para bailar. Vamos a ello.</span>
       </div>
@@ -1241,6 +1245,7 @@ function HomeView({
   const [fechaSeleccionada, setFechaSeleccionada] = useState("");
   const [mesCalendario, setMesCalendario] = useState(() => new Date());
   const [lugaresFavoritos, setLugaresFavoritos] = useState(() => storageGet(FAVORITE_PLACES_KEY, []));
+  const hayBusquedaActiva = Boolean(busquedaActiva || fechaSeleccionada);
 
   const normalizar = (valor) => (valor || "")
     .toString()
@@ -1249,6 +1254,7 @@ function HomeView({
     .toLowerCase();
 
   const eventosFiltrados = useMemo(() => {
+    if (!hayBusquedaActiva) return [];
     const texto = normalizar(busquedaActiva);
     const filtradosPorBusqueda = texto ? events.filter((item) => {
       const contenido = [
@@ -1279,7 +1285,7 @@ function HomeView({
       if (aFavorito !== bFavorito) return bFavorito - aFavorito;
       return new Date(a.fechaInicio || 0) - new Date(b.fechaInicio || 0);
     });
-  }, [busquedaActiva, events, lugaresFavoritos, fechaSeleccionada]);
+  }, [busquedaActiva, events, lugaresFavoritos, fechaSeleccionada, hayBusquedaActiva]);
 
   const eventosFechaSeleccionada = useMemo(() => {
     if (!fechaSeleccionada) return events.length;
@@ -1389,9 +1395,9 @@ function HomeView({
       </form>
 
       <section className="card search-results-card">
-        <h3>{busquedaActiva ? `Resultados para "${busquedaActiva}"` : "Eventos disponibles"}</h3>
+        <h3>{hayBusquedaActiva ? (busquedaActiva ? `Resultados para "${busquedaActiva}"` : "Resultados por fecha") : "Busca tu próximo baile"}</h3>
         <p className="muted">{fechaSeleccionada ? `Mostrando eventos de ${etiquetaFechaSeleccionada}.` : "Busca por ciudad, sala, estilo o elige una fecha."}</p>
-        {lugaresFavoritosActivos.length > 0 && (
+        {hayBusquedaActiva && lugaresFavoritosActivos.length > 0 && (
           <div className="favorite-strip">
             <strong>Sitios favoritos</strong>
             {lugaresFavoritosActivos.map((favorito) => (
@@ -1402,7 +1408,8 @@ function HomeView({
           </div>
         )}
         <div className="list">
-          {eventosFiltrados.length === 0 && <p className="muted">No hay fiestas para esa busqueda todavia. Publica una o prueba otra ciudad.</p>}
+          {!hayBusquedaActiva && <p className="muted">Escribe una ciudad, sala o estilo y elige una fecha si quieres afinar la búsqueda.</p>}
+          {hayBusquedaActiva && eventosFiltrados.length === 0 && <p className="muted">No hay fiestas para esa busqueda todavia. Prueba otra fecha, ciudad o sala.</p>}
           {eventosFiltrados.slice(0, 8).map((item) => (
             <div key={item.id} className={`event-result-wrap ${Number(item.id) === Number(event?.id) ? "active" : ""} ${esLugarFavorito(item) ? "favorite" : ""}`}>
               <button className="list-row event-result" onClick={() => elegirEvento(item)}>
@@ -1437,11 +1444,7 @@ function HomeView({
             {esLugarFavorito(event) ? "Quitar de favoritos" : "Marcar sitio favorito"}
           </button>
         )}
-        <div className="actions attendance-actions">
-          <button className="secondary" onClick={onInteresado} disabled={!event}>Interesado</button>
-          <button className="primary" onClick={onVoy} disabled={!event}>Voy</button>
-          <button className="secondary" onClick={onNoVoy} disabled={!event}>No voy</button>
-        </div>
+        <button className="primary full-button" onClick={onVoy} disabled={!event}>Voy</button>
         <div className="actions">
           <button className="secondary" onClick={onOpenEventDetail} disabled={!event}>Ver mas</button>
           <button className="secondary" onClick={onOpenAttendees} disabled={!event}>Quien va</button>

@@ -286,6 +286,15 @@ h3 {
   gap: 2px;
   min-width: 0;
   flex: 1;
+  cursor: pointer;
+}
+
+.profile-header-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 50%;
+  display: inline-flex;
 }
 
 .header-profile-photo {
