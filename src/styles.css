@@ -551,6 +551,71 @@ h3 {
   font-size: 0.78rem;
 }
 
+.relation-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 12px;
+  margin: 4px 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 117, 66, 0.42);
+  color: #ffb18c;
+  background: rgba(255, 122, 47, 0.08);
+  font-weight: 800;
+  font-size: 0.88rem;
+}
+
+.relation-pill.active {
+  color: #ffffff;
+  border-color: transparent;
+  background: linear-gradient(135deg, #f2175b, #ff7a2f);
+}
+
+.friend-summary,
+.message-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.friend-summary {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+}
+
+.friend-summary strong,
+.message-summary strong {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.message-summary div {
+  border: 1px solid rgba(255, 117, 66, 0.28);
+  border-radius: 8px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  display: grid;
+  gap: 4px;
+}
+
+.friend-summary span,
+.message-summary span,
+.friend-card span {
+  color: #b9b9b9;
+}
+
+.friend-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.friend-card:last-child {
+  border-bottom: 0;
+}
+
 .segmented {
   display: grid;
   grid-template-columns: 1fr 1fr;

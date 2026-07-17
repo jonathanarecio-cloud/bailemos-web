@@ -242,6 +242,7 @@ function App() {
           onOpenChat={() => setScreen(event ? "event-chat" : "general-chat")}
           onOpenGeneralChat={() => setScreen("general-chat")}
           onOpenPeople={() => setScreen("people")}
+          onOpenFriends={() => setScreen("friends")}
           onOpenMessages={() => setScreen("messages")}
           avisosMensajes={avisosMensajes}
           onOpenProfile={() => setScreen("profile")}
@@ -277,6 +278,9 @@ function App() {
         <EventDetailPanel
           event={event}
           onBack={() => setScreen("home")}
+          onInteresado={() => marcarAsistencia("interesado")}
+          onVoy={() => marcarAsistencia("voy")}
+          onNoVoy={() => marcarAsistencia("noVoy")}
           onOpenAttendees={() => setScreen("attendees")}
           onOpenChat={() => setScreen("event-chat")}
           onOpenBailaCar={() => setScreen("bailacar")}
@@ -345,6 +349,21 @@ function App() {
             setScreen("private-chat");
           }}
           onRate={(usuarioId) => setScreen(`rating:${usuarioId}`)}
+        />
+      )}
+
+      {screen === "friends" && (
+        <FriendsPanel
+          authHeaders={authHeaders}
+          onBack={() => setScreen("home")}
+          onOpenProfile={(persona) => {
+            setSelectedUser(persona);
+            setScreen("public-profile");
+          }}
+          onMessage={(persona) => {
+            setSelectedUser(persona);
+            setScreen("private-chat");
+          }}
         />
       )}
 
@@ -786,6 +805,7 @@ function Home({
   onOpenChat,
   onOpenGeneralChat,
   onOpenPeople,
+  onOpenFriends,
   onOpenMessages,
   avisosMensajes = 0,
   onOpenProfile,
@@ -812,6 +832,7 @@ function Home({
         {esPerfilProfesional && <button onClick={onOpenPublish}>Publicar evento</button>}
         <button onClick={onOpenMagic}>Haz tu magia</button>
         <button onClick={onOpenPeople}>Gente</button>
+        <button onClick={onOpenFriends}>Mis amigos</button>
         <button className={avisosMensajes > 0 ? "with-badge" : ""} onClick={onOpenMessages}>
           Mensajes
           {avisosMensajes > 0 && <span className="badge">{avisosMensajes}</span>}
@@ -1110,7 +1131,7 @@ function AttendeesPanel({ event, authHeaders, onBack, onOpenProfile }) {
   );
 }
 
-function EventDetailPanel({ event, onBack, onOpenAttendees, onOpenChat, onOpenBailaCar }) {
+function EventDetailPanel({ event, onBack, onInteresado, onVoy, onNoVoy, onOpenAttendees, onOpenChat, onOpenBailaCar }) {
   const cartel = event?.cartelData || event?.cartelUrl || "";
   const fechaInicio = event?.fechaInicio ? new Date(event.fechaInicio).toLocaleString("es-ES") : "Fecha pendiente";
   const fechaFin = event?.fechaFin ? new Date(event.fechaFin).toLocaleString("es-ES") : "Sin hora de fin";
@@ -1172,6 +1193,11 @@ function EventDetailPanel({ event, onBack, onOpenAttendees, onOpenChat, onOpenBa
             <p>{event.descripcion}</p>
           </section>
         )}
+        <div className="actions attendance-actions">
+          <button className="secondary" onClick={onInteresado}>Interesado</button>
+          <button className="primary" onClick={onVoy}>Voy</button>
+          <button className="secondary" onClick={onNoVoy}>No voy</button>
+        </div>
         <div className="actions">
           <button className="secondary" onClick={onOpenAttendees}>Quien va</button>
           <button className="secondary" onClick={onOpenChat}>Chat evento</button>
@@ -1602,6 +1628,13 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage, onOp
 
   const bloqueado = social?.bloqueadoPorMi || social?.meTieneBloqueado;
   const nombre = perfil?.nombreArtistico || perfil?.nombre || user.nombre;
+  const estadoRelacion = social?.amigoMio
+    ? "Amigo"
+    : social?.solicitudAmistadEnviada
+      ? "Solicitud enviada"
+      : social?.solicitudAmistadRecibida
+        ? "Te envio solicitud"
+        : "Aun no sois amigos";
 
   return (
     <section className="screen">
@@ -1610,6 +1643,7 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage, onOp
         {(perfil?.fotoData || perfil?.fotoUrl) ? <img className="profile-preview" src={perfil.fotoData || perfil.fotoUrl} alt={nombre} /> : <img className="profile-preview" src="/bailemos_logo.jpeg" alt={nombre} />}
         <h2>{nombre}</h2>
         <p className="muted">{perfil?.rol || user.rol}{perfil?.ciudadNombre ? ` - ${perfil.ciudadNombre}` : ""}</p>
+        <span className={`relation-pill ${social?.amigoMio ? "active" : ""}`}>{estadoRelacion}</span>
         {perfil?.biografia && <p>{perfil.biografia}</p>}
         <div className="stats-row">
           <span>{social?.meGusta || 0} me gusta</span>
@@ -1695,6 +1729,89 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage, onOp
   );
 }
 
+function FriendsPanel({ authHeaders, onBack, onOpenProfile, onMessage }) {
+  const [amigos, setAmigos] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  async function cargar() {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/social/amigos`, { headers: authHeaders });
+      if (!response.ok) throw new Error();
+      setAmigos(await response.json());
+    } catch {
+      setAmigos([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    cargar();
+  }, []);
+
+  async function accion(usuarioId, path, method, mensajeOk) {
+    const response = await fetch(`${API_URL}${path}`, {
+      method,
+      headers: { "Content-Type": "application/json", ...authHeaders }
+    });
+
+    if (!response.ok) {
+      alert(await leerErrorServidor(response, "No se pudo completar la accion."));
+      return;
+    }
+
+    alert(mensajeOk);
+    cargar();
+  }
+
+  return (
+    <section className="screen">
+      <button className="back" onClick={onBack}>Volver</button>
+      <h2>Mis amigos</h2>
+      <p className="muted">Tus contactos de baile para chatear, ver perfil, valorar o bloquear.</p>
+
+      <section className="card friend-summary">
+        <strong>{amigos.length}</strong>
+        <span>{amigos.length === 1 ? "amigo conectado a tu red BAILEMOS" : "amigos conectados a tu red BAILEMOS"}</span>
+      </section>
+
+      <section className="card">
+        {loading ? (
+          <p className="muted">Cargando amigos...</p>
+        ) : amigos.length === 0 ? (
+          <p className="muted">Aun no tienes amigos. Entra en Gente y envia una solicitud.</p>
+        ) : (
+          amigos.map((amigo) => (
+            <div className="friend-card" key={amigo.usuarioId}>
+              <div>
+                <strong>{amigo.nombre}</strong>
+                <span>{amigo.rol}</span>
+              </div>
+              <div className="mini-actions">
+                <button className="primary compact" onClick={() => onMessage(amigo)}>Chatear</button>
+                <button className="secondary compact" onClick={() => onOpenProfile(amigo)}>Ver perfil</button>
+                <button
+                  className="secondary compact"
+                  onClick={() => accion(amigo.usuarioId, `/social/usuario/${amigo.usuarioId}/amigo`, "DELETE", "Amigo eliminado.")}
+                >
+                  Quitar
+                </button>
+                <button
+                  className="secondary compact"
+                  onClick={() => accion(amigo.usuarioId, `/social/usuario/${amigo.usuarioId}/bloquear`, "POST", "Usuario bloqueado.")}
+                >
+                  Bloquear
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </section>
+    </section>
+  );
+}
+
 function MessagesPanel({ authHeaders, onBack, onOpen, onUpdated }) {
   const [chats, setChats] = useState([]);
   const [solicitudes, setSolicitudes] = useState([]);
@@ -1749,6 +1866,16 @@ function MessagesPanel({ authHeaders, onBack, onOpen, onUpdated }) {
       <button className="back" onClick={onBack}>Volver</button>
       <h2>Mis mensajes</h2>
       <p className="muted">Tus conversaciones privadas dentro de BAILEMOS.</p>
+      <section className="message-summary">
+        <div>
+          <strong>{solicitudes.length}</strong>
+          <span>solicitudes</span>
+        </div>
+        <div>
+          <strong>{chats.length}</strong>
+          <span>conversaciones</span>
+        </div>
+      </section>
       <section className="card">
         <h3>Solicitudes de amistad</h3>
         {solicitudes.length === 0 ? (
@@ -1769,6 +1896,7 @@ function MessagesPanel({ authHeaders, onBack, onOpen, onUpdated }) {
         )}
       </section>
       <section className="card">
+        <h3>Conversaciones privadas</h3>
         {chats.length === 0 ? (
           <p className="muted">Aún no tienes conversaciones. Entra en Gente y escribe a alguien.</p>
         ) : (
