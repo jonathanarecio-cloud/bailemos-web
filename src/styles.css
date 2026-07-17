@@ -471,25 +471,82 @@ h3 {
   width: 100%;
   min-height: auto;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 0;
   padding: 12px;
-  background: rgba(255, 255, 255, 0.04);
+  background: transparent;
   text-align: left;
   color: #ffffff;
   transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+.event-result-wrap {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .event-result:active {
   transform: scale(0.99);
 }
 
-.event-result.active {
+.event-result-wrap.active {
   border-color: #ff7a2f;
   background: rgba(255, 122, 47, 0.12);
 }
 
+.event-result-wrap.favorite {
+  border-color: rgba(242, 23, 91, 0.82);
+  box-shadow: 0 0 0 1px rgba(242, 23, 91, 0.16);
+}
+
 .event-result small {
   color: #ffb18c;
+}
+
+.favorite-mini,
+.favorite-place-button {
+  min-height: 42px;
+  border-radius: 8px;
+  border: 1px solid rgba(242, 23, 91, 0.7);
+  background: rgba(242, 23, 91, 0.12);
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.favorite-mini {
+  margin-right: 10px;
+  padding: 0 12px;
+}
+
+.favorite-place-button {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.favorite-strip {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 14px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(242, 23, 91, 0.35);
+  background: rgba(242, 23, 91, 0.08);
+}
+
+.favorite-strip strong {
+  color: #ffb18c;
+}
+
+.favorite-strip button {
+  min-height: 42px;
+  border-radius: 8px;
+  background: #111111;
+  border: 1px solid rgba(255, 117, 66, 0.45);
+  color: #ffffff;
 }
 
 .detail-grid {

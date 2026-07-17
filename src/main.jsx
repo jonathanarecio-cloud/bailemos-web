@@ -23,6 +23,7 @@ const CITIES_CACHE_KEY = "bailemos_cities_cache";
 const PROFILE_CACHE_KEY = "bailemos_profile_cache";
 const NOTIFICATION_SNAPSHOT_KEY = "bailemos_notification_snapshot";
 const UNREAD_MESSAGES_KEY = "bailemos_unread_messages_count";
+const FAVORITE_PLACES_KEY = "bailemos_favorite_places";
 
 function storageGet(key, fallback) {
   try {
@@ -54,6 +55,18 @@ function detectarEstilosEvento(texto) {
   const contenido = (texto || "").toUpperCase();
   const detectados = estilosEvento.filter((estilo) => contenido.includes(estilo));
   return detectados.length ? detectados : ["BACHATA"];
+}
+
+function claveLugarFavorito(evento) {
+  const ciudad = (evento?.ciudadNombre || "").trim().toLowerCase();
+  const lugar = (evento?.lugarNombre || evento?.titulo || "").trim().toLowerCase();
+  return `${ciudad}::${lugar}`;
+}
+
+function nombreLugarFavorito(evento) {
+  const lugar = evento?.lugarNombre || evento?.titulo || "Lugar BAILEMOS";
+  const ciudad = evento?.ciudadNombre || "Ciudad pendiente";
+  return `${lugar} - ${ciudad}`;
 }
 
 function crearSnapshotNotificaciones(solicitudes = [], chats = []) {
@@ -1121,6 +1134,7 @@ function HomeView({
   const cartelActual = event?.cartelData || event?.cartelUrl || "";
   const [busqueda, setBusqueda] = useState("");
   const [busquedaActiva, setBusquedaActiva] = useState("");
+  const [lugaresFavoritos, setLugaresFavoritos] = useState(() => storageGet(FAVORITE_PLACES_KEY, []));
 
   const normalizar = (valor) => (valor || "")
     .toString()
@@ -1130,8 +1144,7 @@ function HomeView({
 
   const eventosFiltrados = useMemo(() => {
     const texto = normalizar(busquedaActiva);
-    if (!texto) return events;
-    return events.filter((item) => {
+    const filtrados = texto ? events.filter((item) => {
       const contenido = [
         item.titulo,
         item.descripcion,
@@ -1148,8 +1161,39 @@ function HomeView({
         ...(item.estilos || [])
       ].join(" ");
       return normalizar(contenido).includes(texto);
+    }) : events;
+
+    return [...filtrados].sort((a, b) => {
+      const aFavorito = lugaresFavoritos.includes(claveLugarFavorito(a)) ? 1 : 0;
+      const bFavorito = lugaresFavoritos.includes(claveLugarFavorito(b)) ? 1 : 0;
+      if (aFavorito !== bFavorito) return bFavorito - aFavorito;
+      return new Date(a.fechaInicio || 0) - new Date(b.fechaInicio || 0);
     });
-  }, [busquedaActiva, events]);
+  }, [busquedaActiva, events, lugaresFavoritos]);
+
+  const lugaresFavoritosActivos = useMemo(() => {
+    const mapa = new Map();
+    events.forEach((item) => {
+      const clave = claveLugarFavorito(item);
+      if (lugaresFavoritos.includes(clave) && !mapa.has(clave)) {
+        mapa.set(clave, { clave, nombre: nombreLugarFavorito(item), evento: item });
+      }
+    });
+    return Array.from(mapa.values());
+  }, [events, lugaresFavoritos]);
+
+  function esLugarFavorito(item) {
+    return lugaresFavoritos.includes(claveLugarFavorito(item));
+  }
+
+  function alternarLugarFavorito(item) {
+    const clave = claveLugarFavorito(item);
+    const siguiente = lugaresFavoritos.includes(clave)
+      ? lugaresFavoritos.filter((favorito) => favorito !== clave)
+      : [...lugaresFavoritos, clave];
+    setLugaresFavoritos(siguiente);
+    storageSet(FAVORITE_PLACES_KEY, siguiente);
+  }
 
   function buscarEventos(eventSubmit) {
     eventSubmit.preventDefault();
@@ -1222,6 +1266,11 @@ function HomeView({
             ? `${event.lugarNombre || "Lugar pendiente"} - Van ${event.asistentes || 0} personas`
             : "Puedes publicar un evento o entrar al chat general."}
         </p>
+        {event && (
+          <button className="favorite-place-button" type="button" onClick={() => alternarLugarFavorito(event)}>
+            {esLugarFavorito(event) ? "Quitar de favoritos" : "Marcar sitio favorito"}
+          </button>
+        )}
         <div className="actions attendance-actions">
           <button className="secondary" onClick={onInteresado} disabled={!event}>Interesado</button>
           <button className="primary" onClick={onVoy} disabled={!event}>Voy</button>
@@ -1256,14 +1305,29 @@ function HomeView({
 
       <section className="card">
         <h3>{busquedaActiva ? `Resultados para "${busquedaActiva}"` : "Eventos disponibles"}</h3>
+        {lugaresFavoritosActivos.length > 0 && (
+          <div className="favorite-strip">
+            <strong>Sitios favoritos</strong>
+            {lugaresFavoritosActivos.map((favorito) => (
+              <button key={favorito.clave} type="button" onClick={() => elegirEvento(favorito.evento)}>
+                {favorito.nombre}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="list">
           {eventosFiltrados.length === 0 && <p className="muted">No hay fiestas para esa busqueda todavia. Publica una o prueba otra ciudad.</p>}
           {eventosFiltrados.slice(0, 8).map((item) => (
-            <button key={item.id} className={`list-row event-result ${Number(item.id) === Number(event?.id) ? "active" : ""}`} onClick={() => elegirEvento(item)}>
-              <strong>{item.titulo}</strong>
-              <span>{item.ciudadNombre} - {item.lugarNombre || "Lugar pendiente"} - Van {item.asistentes || 0}</span>
-              <small>{item.estilos?.join(" / ") || "Bachata / Salsa / Kizomba"}</small>
-            </button>
+            <div key={item.id} className={`event-result-wrap ${Number(item.id) === Number(event?.id) ? "active" : ""} ${esLugarFavorito(item) ? "favorite" : ""}`}>
+              <button className="list-row event-result" onClick={() => elegirEvento(item)}>
+                <strong>{esLugarFavorito(item) ? "Favorito - " : ""}{item.titulo}</strong>
+                <span>{item.ciudadNombre} - {item.lugarNombre || "Lugar pendiente"} - Van {item.asistentes || 0}</span>
+                <small>{item.estilos?.join(" / ") || "Bachata / Salsa / Kizomba"}</small>
+              </button>
+              <button className="favorite-mini" type="button" onClick={() => alternarLugarFavorito(item)}>
+                {esLugarFavorito(item) ? "Quitar" : "Favorito"}
+              </button>
+            </div>
           ))}
         </div>
       </section>
