@@ -69,6 +69,32 @@ function nombreLugarFavorito(evento) {
   return `${lugar} - ${ciudad}`;
 }
 
+function fechaLocalInput(fecha = new Date()) {
+  const year = fecha.getFullYear();
+  const month = String(fecha.getMonth() + 1).padStart(2, "0");
+  const day = String(fecha.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function sumarDias(fecha, dias) {
+  const copia = new Date(fecha);
+  copia.setDate(copia.getDate() + dias);
+  return copia;
+}
+
+function siguienteSabado(fecha = new Date()) {
+  const copia = new Date(fecha);
+  const dia = copia.getDay();
+  const distancia = dia === 6 ? 0 : (6 - dia + 7) % 7;
+  copia.setDate(copia.getDate() + distancia);
+  return copia;
+}
+
+function esMismaFecha(fechaEvento, fechaFiltro) {
+  if (!fechaEvento || !fechaFiltro) return true;
+  return fechaLocalInput(new Date(fechaEvento)) === fechaFiltro;
+}
+
 function crearSnapshotNotificaciones(solicitudes = [], chats = []) {
   return {
     solicitudes: solicitudes.map((item) => String(item.id || item.usuarioId)).sort(),
@@ -1134,6 +1160,7 @@ function HomeView({
   const cartelActual = event?.cartelData || event?.cartelUrl || "";
   const [busqueda, setBusqueda] = useState("");
   const [busquedaActiva, setBusquedaActiva] = useState("");
+  const [fechaSeleccionada, setFechaSeleccionada] = useState("");
   const [lugaresFavoritos, setLugaresFavoritos] = useState(() => storageGet(FAVORITE_PLACES_KEY, []));
 
   const normalizar = (valor) => (valor || "")
@@ -1144,7 +1171,7 @@ function HomeView({
 
   const eventosFiltrados = useMemo(() => {
     const texto = normalizar(busquedaActiva);
-    const filtrados = texto ? events.filter((item) => {
+    const filtradosPorBusqueda = texto ? events.filter((item) => {
       const contenido = [
         item.titulo,
         item.descripcion,
@@ -1163,13 +1190,26 @@ function HomeView({
       return normalizar(contenido).includes(texto);
     }) : events;
 
+    const filtrados = fechaSeleccionada
+      ? filtradosPorBusqueda.filter((item) => esMismaFecha(item.fechaInicio, fechaSeleccionada))
+      : filtradosPorBusqueda;
+
     return [...filtrados].sort((a, b) => {
       const aFavorito = lugaresFavoritos.includes(claveLugarFavorito(a)) ? 1 : 0;
       const bFavorito = lugaresFavoritos.includes(claveLugarFavorito(b)) ? 1 : 0;
       if (aFavorito !== bFavorito) return bFavorito - aFavorito;
       return new Date(a.fechaInicio || 0) - new Date(b.fechaInicio || 0);
     });
-  }, [busquedaActiva, events, lugaresFavoritos]);
+  }, [busquedaActiva, events, lugaresFavoritos, fechaSeleccionada]);
+
+  const eventosFechaSeleccionada = useMemo(() => {
+    if (!fechaSeleccionada) return events.length;
+    return events.filter((item) => esMismaFecha(item.fechaInicio, fechaSeleccionada)).length;
+  }, [events, fechaSeleccionada]);
+
+  const etiquetaFechaSeleccionada = fechaSeleccionada
+    ? new Date(`${fechaSeleccionada}T12:00:00`).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })
+    : "Todos los días";
 
   const lugaresFavoritosActivos = useMemo(() => {
     const mapa = new Map();
@@ -1198,6 +1238,14 @@ function HomeView({
   function buscarEventos(eventSubmit) {
     eventSubmit.preventDefault();
     setBusquedaActiva(busqueda.trim());
+  }
+
+  function aplicarFechaRapida(tipo) {
+    const hoy = new Date();
+    if (tipo === "hoy") setFechaSeleccionada(fechaLocalInput(hoy));
+    if (tipo === "manana") setFechaSeleccionada(fechaLocalInput(sumarDias(hoy, 1)));
+    if (tipo === "finde") setFechaSeleccionada(fechaLocalInput(siguienteSabado(hoy)));
+    if (tipo === "todos") setFechaSeleccionada("");
   }
 
   function elegirEvento(item) {
@@ -1230,6 +1278,24 @@ function HomeView({
         />
         <button className="primary">Buscar</button>
       </form>
+
+      <section className="calendar-filter">
+        <div>
+          <small>Calendario de eventos</small>
+          <strong>{etiquetaFechaSeleccionada}</strong>
+          <span>{eventosFechaSeleccionada === 1 ? "1 evento encontrado" : `${eventosFechaSeleccionada} eventos encontrados`}</span>
+        </div>
+        <div className="calendar-actions">
+          <button type="button" className={fechaSeleccionada === fechaLocalInput(new Date()) ? "active" : ""} onClick={() => aplicarFechaRapida("hoy")}>Hoy</button>
+          <button type="button" className={fechaSeleccionada === fechaLocalInput(sumarDias(new Date(), 1)) ? "active" : ""} onClick={() => aplicarFechaRapida("manana")}>Mañana</button>
+          <button type="button" className={fechaSeleccionada === fechaLocalInput(siguienteSabado(new Date())) ? "active" : ""} onClick={() => aplicarFechaRapida("finde")}>Sábado</button>
+          <button type="button" onClick={() => aplicarFechaRapida("todos")}>Todos</button>
+        </div>
+        <label className="field-label calendar-date">
+          <span>Elegir otro día</span>
+          <input type="date" value={fechaSeleccionada} onChange={(e) => setFechaSeleccionada(e.target.value)} />
+        </label>
+      </section>
 
       <div className="quick-grid">
         <button className="primary" onClick={onOpenEventDetail} disabled={!event}>Evento elegido</button>
@@ -1305,6 +1371,7 @@ function HomeView({
 
       <section className="card">
         <h3>{busquedaActiva ? `Resultados para "${busquedaActiva}"` : "Eventos disponibles"}</h3>
+        <p className="muted">{fechaSeleccionada ? `Mostrando eventos de ${etiquetaFechaSeleccionada}.` : "Mostrando todos los eventos publicados."}</p>
         {lugaresFavoritosActivos.length > 0 && (
           <div className="favorite-strip">
             <strong>Sitios favoritos</strong>

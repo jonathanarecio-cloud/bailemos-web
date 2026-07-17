@@ -332,6 +332,60 @@ h3 {
   margin-bottom: 0;
 }
 
+.calendar-filter {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(242, 23, 91, 0.38);
+  background:
+    linear-gradient(135deg, rgba(242, 23, 91, 0.14), rgba(255, 122, 47, 0.08)),
+    rgba(255, 255, 255, 0.045);
+}
+
+.calendar-filter small {
+  color: #ffb18c;
+  font-weight: 900;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+}
+
+.calendar-filter strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 1.15rem;
+}
+
+.calendar-filter span {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.calendar-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.calendar-actions button {
+  min-height: 42px;
+  border-radius: 8px;
+  background: #111111;
+  border: 1px solid rgba(255, 117, 66, 0.45);
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.calendar-actions button.active {
+  background: linear-gradient(135deg, #f2175b, #ff7a2f);
+  border-color: transparent;
+}
+
+.calendar-date input {
+  min-height: 48px;
+}
+
 .quick-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
