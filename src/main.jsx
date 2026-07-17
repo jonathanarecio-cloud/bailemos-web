@@ -974,6 +974,13 @@ function HomeView({
         item.ciudadNombre,
         item.lugarNombre,
         item.direccion,
+        item.tipoEvento,
+        item.djNombre,
+        item.profesorNombre,
+        item.nivel,
+        item.telefonoContacto,
+        item.instagram,
+        item.enlaceExterno,
         ...(item.estilos || [])
       ].join(" ");
       return normalizar(contenido).includes(texto);
@@ -1226,6 +1233,30 @@ function EventDetailPanel({ event, onBack, onInteresado, onVoy, onNoVoy, onOpenA
             <span>{event.estilos?.join(" / ") || "No indicado"}</span>
           </div>
           <div>
+            <strong>Tipo de evento</strong>
+            <span>{event.tipoEvento || "Social / fiesta de baile"}</span>
+          </div>
+          <div>
+            <strong>Nivel recomendado</strong>
+            <span>{event.nivel || "Todos los niveles"}</span>
+          </div>
+          <div>
+            <strong>DJ</strong>
+            <span>{event.djNombre || "No indicado"}</span>
+          </div>
+          <div>
+            <strong>Profesor / clase</strong>
+            <span>{event.profesorNombre || "No indicado"}</span>
+          </div>
+          <div>
+            <strong>Contacto</strong>
+            <span>{event.telefonoContacto || "No indicado"}</span>
+          </div>
+          <div>
+            <strong>Instagram</strong>
+            <span>{event.instagram || "No indicado"}</span>
+          </div>
+          <div>
             <strong>Personas que van</strong>
             <span>{event.asistentes || 0}</span>
           </div>
@@ -1239,6 +1270,11 @@ function EventDetailPanel({ event, onBack, onInteresado, onVoy, onNoVoy, onOpenA
             <strong>Descripcion</strong>
             <p>{event.descripcion}</p>
           </section>
+        )}
+        {event.enlaceExterno && (
+          <a className="primary link-button" href={event.enlaceExterno} target="_blank" rel="noreferrer">
+            Abrir enlace oficial del evento
+          </a>
         )}
         <div className="actions attendance-actions">
           <button className="secondary" onClick={onInteresado}>Interesado</button>
@@ -2339,6 +2375,13 @@ function PublishEvent({ ciudades, authHeaders, onBack, onCreated, editingEvent =
     precio: editingEvent?.precio ?? "",
     cartelUrl: editingEvent?.cartelUrl || "",
     cartelData: editingEvent?.cartelData || "",
+    tipoEvento: editingEvent?.tipoEvento || "",
+    djNombre: editingEvent?.djNombre || "",
+    profesorNombre: editingEvent?.profesorNombre || "",
+    nivel: editingEvent?.nivel || "",
+    telefonoContacto: editingEvent?.telefonoContacto || "",
+    instagram: editingEvent?.instagram || "",
+    enlaceExterno: editingEvent?.enlaceExterno || "",
     estilos: editingEvent?.estilos?.length ? editingEvent.estilos : ["BACHATA"]
   });
   const [textoImportado, setTextoImportado] = useState("");
@@ -2383,6 +2426,7 @@ function PublishEvent({ ciudades, authHeaders, onBack, onCreated, editingEvent =
       descripcion: current.descripcion || textoImportado,
       precio: current.precio || precio,
       cartelUrl: current.cartelUrl || url,
+      enlaceExterno: current.enlaceExterno || url,
       estilos: detectarEstilosEvento(textoImportado)
     }));
   }
@@ -2430,6 +2474,24 @@ function PublishEvent({ ciudades, authHeaders, onBack, onCreated, editingEvent =
           {ciudades.map((ciudad) => <option key={ciudad.id} value={ciudad.id}>{ciudad.nombre}</option>)}
         </select>
         <input value={form.lugarNombre} onChange={(e) => setField("lugarNombre", e.target.value)} placeholder="Sala, disco o academia" />
+        <select value={form.tipoEvento} onChange={(e) => setField("tipoEvento", e.target.value)}>
+          <option value="">Tipo de evento</option>
+          <option value="Social">Social</option>
+          <option value="Clase + social">Clase + social</option>
+          <option value="Concierto">Concierto</option>
+          <option value="Festival">Festival</option>
+          <option value="Workshop">Workshop</option>
+          <option value="Otro">Otro</option>
+        </select>
+        <select value={form.nivel} onChange={(e) => setField("nivel", e.target.value)}>
+          <option value="">Nivel recomendado</option>
+          <option value="Todos los niveles">Todos los niveles</option>
+          <option value="Principiante">Principiante</option>
+          <option value="Intermedio">Intermedio</option>
+          <option value="Avanzado">Avanzado</option>
+        </select>
+        <input value={form.djNombre} onChange={(e) => setField("djNombre", e.target.value)} placeholder="DJ invitado o DJ residente" />
+        <input value={form.profesorNombre} onChange={(e) => setField("profesorNombre", e.target.value)} placeholder="Profesor, clase o artista invitado" />
         <input value={form.direccion} onChange={(e) => setField("direccion", e.target.value)} placeholder="Dirección" />
         <label className="field-label">
           <span>Fecha y hora de inicio del evento</span>
@@ -2440,6 +2502,9 @@ function PublishEvent({ ciudades, authHeaders, onBack, onCreated, editingEvent =
           <input value={form.fechaFin} onChange={(e) => setField("fechaFin", e.target.value)} type="datetime-local" />
         </label>
         <input value={form.precio} onChange={(e) => setField("precio", e.target.value)} placeholder="Precio" inputMode="decimal" />
+        <input value={form.telefonoContacto} onChange={(e) => setField("telefonoContacto", e.target.value)} placeholder="Telefono o WhatsApp de contacto" />
+        <input value={form.instagram} onChange={(e) => setField("instagram", e.target.value)} placeholder="Instagram del evento o sala" />
+        <input value={form.enlaceExterno} onChange={(e) => setField("enlaceExterno", e.target.value)} placeholder="Enlace de entradas, web o informacion" />
         <input value={form.cartelUrl} onChange={(e) => setField("cartelUrl", e.target.value)} placeholder="URL del cartel o Instagram" />
         <label className="file-picker">
           Subir cartel desde tu dispositivo
@@ -2473,6 +2538,13 @@ function OrganizerPortal({ ciudades, authHeaders, onBack, onCreated }) {
     precio: "",
     cartelUrl: "",
     cartelData: "",
+    tipoEvento: "",
+    djNombre: "",
+    profesorNombre: "",
+    nivel: "",
+    telefonoContacto: "",
+    instagram: "",
+    enlaceExterno: "",
     estilos: ["BACHATA"]
   });
 
@@ -2516,6 +2588,7 @@ function OrganizerPortal({ ciudades, authHeaders, onBack, onCreated }) {
       descripcion: current.descripcion || texto,
       precio: current.precio || precio,
       cartelUrl: current.cartelUrl || url,
+      enlaceExterno: current.enlaceExterno || url,
       estilos: detectarEstilosEvento(texto)
     }));
   }
@@ -2567,6 +2640,24 @@ function OrganizerPortal({ ciudades, authHeaders, onBack, onCreated }) {
           {ciudades.map((ciudad) => <option key={ciudad.id} value={ciudad.id}>{ciudad.nombre}</option>)}
         </select>
         <input value={form.lugarNombre} onChange={(event) => setField("lugarNombre", event.target.value)} placeholder="Sala, disco, academia u organizador" />
+        <select value={form.tipoEvento} onChange={(event) => setField("tipoEvento", event.target.value)}>
+          <option value="">Tipo de evento</option>
+          <option value="Social">Social</option>
+          <option value="Clase + social">Clase + social</option>
+          <option value="Concierto">Concierto</option>
+          <option value="Festival">Festival</option>
+          <option value="Workshop">Workshop</option>
+          <option value="Otro">Otro</option>
+        </select>
+        <select value={form.nivel} onChange={(event) => setField("nivel", event.target.value)}>
+          <option value="">Nivel recomendado</option>
+          <option value="Todos los niveles">Todos los niveles</option>
+          <option value="Principiante">Principiante</option>
+          <option value="Intermedio">Intermedio</option>
+          <option value="Avanzado">Avanzado</option>
+        </select>
+        <input value={form.djNombre} onChange={(event) => setField("djNombre", event.target.value)} placeholder="DJ invitado o DJ residente" />
+        <input value={form.profesorNombre} onChange={(event) => setField("profesorNombre", event.target.value)} placeholder="Profesor, clase o artista invitado" />
         <input value={form.direccion} onChange={(event) => setField("direccion", event.target.value)} placeholder="Dirección" />
         <label className="field-label">
           <span>Fecha y hora de inicio del evento</span>
@@ -2577,6 +2668,9 @@ function OrganizerPortal({ ciudades, authHeaders, onBack, onCreated }) {
           <input value={form.fechaFin} onChange={(event) => setField("fechaFin", event.target.value)} type="datetime-local" />
         </label>
         <input value={form.precio} onChange={(event) => setField("precio", event.target.value)} placeholder="Precio" inputMode="decimal" />
+        <input value={form.telefonoContacto} onChange={(event) => setField("telefonoContacto", event.target.value)} placeholder="Telefono o WhatsApp de contacto" />
+        <input value={form.instagram} onChange={(event) => setField("instagram", event.target.value)} placeholder="Instagram del evento o sala" />
+        <input value={form.enlaceExterno} onChange={(event) => setField("enlaceExterno", event.target.value)} placeholder="Enlace de entradas, web o informacion" />
         <input value={form.cartelUrl} onChange={(event) => setField("cartelUrl", event.target.value)} placeholder="URL del cartel, web o Instagram" />
         <label className="file-picker">
           Subir cartel desde tu dispositivo
