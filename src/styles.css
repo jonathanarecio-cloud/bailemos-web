@@ -74,6 +74,11 @@ textarea {
   text-align: center;
 }
 
+.intro-page {
+  justify-content: flex-start;
+  padding-top: 36px;
+}
+
 .logo {
   width: 120px;
   height: 120px;
@@ -86,6 +91,33 @@ textarea {
 .hero-logo {
   width: 172px;
   height: 172px;
+}
+
+.intro-kicker {
+  color: #ffb18c;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.intro-grid {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0;
+  text-align: left;
+}
+
+.intro-grid div {
+  border: 1px solid rgba(255, 117, 66, 0.28);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.intro-grid strong {
+  color: #ffffff;
+  font-size: 0.95rem;
 }
 
 h1,
@@ -323,13 +355,25 @@ h3 {
 
 .search-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr 150px auto;
   gap: 10px;
   margin-bottom: 16px;
+  align-items: end;
 }
 
 .search-row .search {
   margin-bottom: 0;
+}
+
+.search-row label {
+  display: grid;
+  gap: 7px;
+}
+
+.search-row label span {
+  color: #ffb18c;
+  font-size: 0.82rem;
+  font-weight: 900;
 }
 
 .calendar-filter {

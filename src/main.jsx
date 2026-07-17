@@ -24,6 +24,7 @@ const PROFILE_CACHE_KEY = "bailemos_profile_cache";
 const NOTIFICATION_SNAPSHOT_KEY = "bailemos_notification_snapshot";
 const UNREAD_MESSAGES_KEY = "bailemos_unread_messages_count";
 const FAVORITE_PLACES_KEY = "bailemos_favorite_places";
+const INTRO_SEEN_KEY = "bailemos_intro_seen";
 
 function storageGet(key, fallback) {
   try {
@@ -198,7 +199,10 @@ function App() {
     const saved = localStorage.getItem("bailemos_session");
     return saved ? JSON.parse(saved) : null;
   });
-  const [screen, setScreen] = useState(session ? "home" : "welcome");
+  const [screen, setScreen] = useState(() => {
+    if (!session) return "welcome";
+    return localStorage.getItem(INTRO_SEEN_KEY) === "true" ? "home" : "intro";
+  });
   const [events, setEvents] = useState(() => storageGet(EVENTS_CACHE_KEY, []));
   const [event, setEvent] = useState(null);
   const [ciudades, setCiudades] = useState(() => storageGet(CITIES_CACHE_KEY, ciudadesIniciales));
@@ -369,6 +373,11 @@ function App() {
   function guardarSesion(data) {
     localStorage.setItem("bailemos_session", JSON.stringify(data));
     setSession(data);
+    setScreen(localStorage.getItem(INTRO_SEEN_KEY) === "true" ? "home" : "intro");
+  }
+
+  function completarIntro() {
+    localStorage.setItem(INTRO_SEEN_KEY, "true");
     setScreen("home");
   }
 
@@ -444,6 +453,10 @@ function App() {
 
   if (screen === "legal-public") {
     return <LegalPanel onBack={() => setScreen("welcome")} />;
+  }
+
+  if (screen === "intro") {
+    return <IntroPanel onStart={completarIntro} />;
   }
 
   return (
@@ -636,6 +649,7 @@ function App() {
           ciudades={ciudades}
           authHeaders={authHeaders}
           onBack={() => setScreen("home")}
+          onShowIntro={() => setScreen("intro")}
           onSaved={(perfil) => {
             const updated = { ...session, nombre: perfil.nombre || session.nombre };
             const foto = perfil.fotoData || perfil.fotoUrl || "";
@@ -858,6 +872,34 @@ function WelcomePro({ onLogin, onRegister, onLegal }) {
         <button className="secondary" onClick={onRegister}>Crear cuenta</button>
         <button className="ghost center-button" onClick={onLegal}>Privacidad y condiciones</button>
       </div>
+    </main>
+  );
+}
+
+function IntroPanel({ onStart }) {
+  const beneficios = [
+    "Encuentra fiestas, salas y eventos por ciudad y fecha.",
+    "Organiza tu calendario y guarda tus sitios favoritos.",
+    "Mira quien va antes de salir y chatea por evento.",
+    "Haz amigos dentro de la comunidad del baile.",
+    "Comparte coche con BailaCar para llegar mejor.",
+    "Crea tu perfil, recibe valoraciones y conecta con profesionales."
+  ];
+
+  return (
+    <main className="welcome intro-page">
+      <img className="logo hero-logo" src="/bailemos_logo.jpeg" alt="BAILEMOS!" />
+      <small className="intro-kicker">Tu mundo del baile en una sola app</small>
+      <h1>BAILEMOS!</h1>
+      <p>Esta es tu app diseñada para ayudarte a gestionar todo tu mundo del baile: eventos, salas, amigos, chats, transporte y planes.</p>
+      <section className="intro-grid">
+        {beneficios.map((texto) => (
+          <div key={texto}>
+            <strong>{texto}</strong>
+          </div>
+        ))}
+      </section>
+      <button className="primary" onClick={onStart}>Comenzamos</button>
     </main>
   );
 }
@@ -1317,12 +1359,19 @@ function HomeView({
       </section>
       <h2>Donde se baila hoy</h2>
       <form className="search-row" onSubmit={buscarEventos}>
-        <input
-          className="search"
-          value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-          placeholder="Busca Malaga, Barcelona, sala, bachata, salsa..."
-        />
+        <label>
+          <span>Ciudad, sala o estilo</span>
+          <input
+            className="search"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Ejemplo: Malaga, Atrevete, bachata..."
+          />
+        </label>
+        <label>
+          <span>Fecha</span>
+          <input type="date" value={fechaSeleccionada} onChange={(e) => setFechaSeleccionada(e.target.value)} />
+        </label>
         <button className="primary">Buscar</button>
       </form>
 
@@ -2369,7 +2418,7 @@ function MessagesPanel({ authHeaders, onBack, onOpen, onUpdated }) {
   );
 }
 
-function ProfilePanel({ session, ciudades, authHeaders, onBack, onSaved }) {
+function ProfilePanel({ session, ciudades, authHeaders, onBack, onShowIntro, onSaved }) {
   const [form, setForm] = useState({
     nombreArtistico: "",
     biografia: "",
@@ -2521,6 +2570,7 @@ function ProfilePanel({ session, ciudades, authHeaders, onBack, onSaved }) {
       <button className="back" onClick={onBack}>Volver</button>
       <h2>Mi perfil</h2>
       <p className="muted">Edita como te ve la comunidad BAILEMOS.</p>
+      <button className="secondary full-button" type="button" onClick={onShowIntro}>Ver bienvenida de BAILEMOS</button>
 
       <form className="card stack" onSubmit={guardar}>
         {(form.fotoData || form.fotoUrl) && <img className="profile-preview" src={form.fotoData || form.fotoUrl} alt="Foto de perfil" />}
