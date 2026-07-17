@@ -1086,6 +1086,7 @@ function Header({
     <header className="topbar">
       <button className="profile-header-button" type="button" onClick={onOpenProfile}>
         <img className="header-profile-photo" src={fotoPerfil} alt={nombre} />
+        <span>Perfil</span>
       </button>
       <div className="hello-copy" onClick={onOpenProfile} role="button" tabIndex={0}>
         <strong>Hola {nombre}</strong>
@@ -2598,6 +2599,7 @@ function ProfilePanel({
           {esAdmin && <button type="button" onClick={onOpenAdmin}>Admin</button>}
           {esPerfilProfesional && <button type="button" onClick={onOpenPublish}>Publicar evento</button>}
           {puedeEditarEvento && <button type="button" onClick={onEditEvent}>Editar evento elegido</button>}
+          <button type="button" onClick={onOpenLegal}>Legal</button>
         </div>
         <button className="secondary full-button" type="button" onClick={onShowIntro}>Ver bienvenida de BAILEMOS</button>
       </section>
