@@ -95,6 +95,29 @@ function esMismaFecha(fechaEvento, fechaFiltro) {
   return fechaLocalInput(new Date(fechaEvento)) === fechaFiltro;
 }
 
+function crearDiasMes(fechaBase = new Date()) {
+  const year = fechaBase.getFullYear();
+  const month = fechaBase.getMonth();
+  const primerDia = new Date(year, month, 1);
+  const ultimoDia = new Date(year, month + 1, 0);
+  const huecosInicio = (primerDia.getDay() + 6) % 7;
+  const dias = [];
+
+  for (let i = 0; i < huecosInicio; i += 1) {
+    dias.push(null);
+  }
+
+  for (let dia = 1; dia <= ultimoDia.getDate(); dia += 1) {
+    dias.push(new Date(year, month, dia));
+  }
+
+  while (dias.length % 7 !== 0) {
+    dias.push(null);
+  }
+
+  return dias;
+}
+
 function crearSnapshotNotificaciones(solicitudes = [], chats = []) {
   return {
     solicitudes: solicitudes.map((item) => String(item.id || item.usuarioId)).sort(),
@@ -1161,6 +1184,7 @@ function HomeView({
   const [busqueda, setBusqueda] = useState("");
   const [busquedaActiva, setBusquedaActiva] = useState("");
   const [fechaSeleccionada, setFechaSeleccionada] = useState("");
+  const [mesCalendario, setMesCalendario] = useState(() => new Date());
   const [lugaresFavoritos, setLugaresFavoritos] = useState(() => storageGet(FAVORITE_PLACES_KEY, []));
 
   const normalizar = (valor) => (valor || "")
@@ -1211,6 +1235,20 @@ function HomeView({
     ? new Date(`${fechaSeleccionada}T12:00:00`).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })
     : "Todos los días";
 
+  const diasCalendario = useMemo(() => crearDiasMes(mesCalendario), [mesCalendario]);
+
+  const eventosPorDia = useMemo(() => {
+    const mapa = new Map();
+    events.forEach((item) => {
+      if (!item.fechaInicio) return;
+      const clave = fechaLocalInput(new Date(item.fechaInicio));
+      mapa.set(clave, (mapa.get(clave) || 0) + 1);
+    });
+    return mapa;
+  }, [events]);
+
+  const etiquetaMesCalendario = mesCalendario.toLocaleDateString("es-ES", { month: "long", year: "numeric" });
+
   const lugaresFavoritosActivos = useMemo(() => {
     const mapa = new Map();
     events.forEach((item) => {
@@ -1246,6 +1284,15 @@ function HomeView({
     if (tipo === "manana") setFechaSeleccionada(fechaLocalInput(sumarDias(hoy, 1)));
     if (tipo === "finde") setFechaSeleccionada(fechaLocalInput(siguienteSabado(hoy)));
     if (tipo === "todos") setFechaSeleccionada("");
+  }
+
+  function cambiarMes(direccion) {
+    setMesCalendario((actual) => new Date(actual.getFullYear(), actual.getMonth() + direccion, 1));
+  }
+
+  function seleccionarDiaCalendario(dia) {
+    if (!dia) return;
+    setFechaSeleccionada(fechaLocalInput(dia));
   }
 
   function elegirEvento(item) {
@@ -1290,6 +1337,35 @@ function HomeView({
           <button type="button" className={fechaSeleccionada === fechaLocalInput(sumarDias(new Date(), 1)) ? "active" : ""} onClick={() => aplicarFechaRapida("manana")}>Mañana</button>
           <button type="button" className={fechaSeleccionada === fechaLocalInput(siguienteSabado(new Date())) ? "active" : ""} onClick={() => aplicarFechaRapida("finde")}>Sábado</button>
           <button type="button" onClick={() => aplicarFechaRapida("todos")}>Todos</button>
+        </div>
+        <div className="month-calendar">
+          <div className="month-calendar-header">
+            <button type="button" onClick={() => cambiarMes(-1)}>‹</button>
+            <strong>{etiquetaMesCalendario}</strong>
+            <button type="button" onClick={() => cambiarMes(1)}>›</button>
+          </div>
+          <div className="month-weekdays">
+            {["L", "M", "X", "J", "V", "S", "D"].map((dia) => <span key={dia}>{dia}</span>)}
+          </div>
+          <div className="month-grid">
+            {diasCalendario.map((dia, index) => {
+              const claveDia = dia ? fechaLocalInput(dia) : "";
+              const totalDia = claveDia ? eventosPorDia.get(claveDia) || 0 : 0;
+              const activo = claveDia && fechaSeleccionada === claveDia;
+              return (
+                <button
+                  key={claveDia || `empty-${index}`}
+                  type="button"
+                  className={`${dia ? "" : "empty"} ${totalDia > 0 ? "has-events" : ""} ${activo ? "active" : ""}`}
+                  disabled={!dia}
+                  onClick={() => seleccionarDiaCalendario(dia)}
+                >
+                  {dia && <span>{dia.getDate()}</span>}
+                  {totalDia > 0 && <em>{totalDia}</em>}
+                </button>
+              );
+            })}
+          </div>
         </div>
         <label className="field-label calendar-date">
           <span>Elegir otro día</span>
