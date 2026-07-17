@@ -647,9 +647,22 @@ function App() {
         <ProfilePanel
           session={session}
           ciudades={ciudades}
+          event={event}
           authHeaders={authHeaders}
           onBack={() => setScreen("home")}
           onShowIntro={() => setScreen("intro")}
+          onOpenFriends={() => setScreen("friends")}
+          onOpenGeneralChat={() => setScreen("general-chat")}
+          onOpenMagic={() => setScreen("magic")}
+          onOpenNotifications={() => setScreen("notifications")}
+          onOpenPro={() => setScreen("pro")}
+          onOpenAdmin={() => setScreen("admin")}
+          onOpenLegal={() => setScreen("legal")}
+          onOpenPublish={() => setScreen("publish-event")}
+          onEditEvent={() => {
+            setEditingEvent(event);
+            setScreen("edit-event");
+          }}
           onSaved={(perfil) => {
             const updated = { ...session, nombre: perfil.nombre || session.nombre };
             const foto = perfil.fotoData || perfil.fotoUrl || "";
@@ -1375,6 +1388,68 @@ function HomeView({
         <button className="primary">Buscar</button>
       </form>
 
+      <section className="card search-results-card">
+        <h3>{busquedaActiva ? `Resultados para "${busquedaActiva}"` : "Eventos disponibles"}</h3>
+        <p className="muted">{fechaSeleccionada ? `Mostrando eventos de ${etiquetaFechaSeleccionada}.` : "Busca por ciudad, sala, estilo o elige una fecha."}</p>
+        {lugaresFavoritosActivos.length > 0 && (
+          <div className="favorite-strip">
+            <strong>Sitios favoritos</strong>
+            {lugaresFavoritosActivos.map((favorito) => (
+              <button key={favorito.clave} type="button" onClick={() => elegirEvento(favorito.evento)}>
+                {favorito.nombre}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="list">
+          {eventosFiltrados.length === 0 && <p className="muted">No hay fiestas para esa busqueda todavia. Publica una o prueba otra ciudad.</p>}
+          {eventosFiltrados.slice(0, 8).map((item) => (
+            <div key={item.id} className={`event-result-wrap ${Number(item.id) === Number(event?.id) ? "active" : ""} ${esLugarFavorito(item) ? "favorite" : ""}`}>
+              <button className="list-row event-result" onClick={() => elegirEvento(item)}>
+                <strong>{esLugarFavorito(item) ? "Favorito - " : ""}{item.titulo}</strong>
+                <span>{item.ciudadNombre} - {item.lugarNombre || "Lugar pendiente"} - Van {item.asistentes || 0}</span>
+                <small>{item.estilos?.join(" / ") || "Bachata / Salsa / Kizomba"}</small>
+              </button>
+              <button className="favorite-mini" type="button" onClick={() => alternarLugarFavorito(item)}>
+                {esLugarFavorito(item) ? "Quitar" : "Favorito"}
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <article className="card feature-card">
+        <small>{event ? "Lugar elegido" : "BAILEMOS!"}</small>
+        <h3>{loading ? "Cargando eventos..." : event ? (event.lugarNombre || event.titulo) : "No hay eventos publicados"}</h3>
+        {event && <p className="event-title-line">{event.titulo} - {event.ciudadNombre}</p>}
+        {cartelActual ? (
+          <img className="event-poster" src={cartelActual} alt={`Cartel de ${event.titulo}`} />
+        ) : (
+          <div className="event-poster empty-poster">Cartel pendiente</div>
+        )}
+        <p>
+          {event
+            ? `${event.lugarNombre || "Lugar pendiente"} - Van ${event.asistentes || 0} personas`
+            : "Busca y elige un evento para ver sus acciones."}
+        </p>
+        {event && (
+          <button className="favorite-place-button" type="button" onClick={() => alternarLugarFavorito(event)}>
+            {esLugarFavorito(event) ? "Quitar de favoritos" : "Marcar sitio favorito"}
+          </button>
+        )}
+        <div className="actions attendance-actions">
+          <button className="secondary" onClick={onInteresado} disabled={!event}>Interesado</button>
+          <button className="primary" onClick={onVoy} disabled={!event}>Voy</button>
+          <button className="secondary" onClick={onNoVoy} disabled={!event}>No voy</button>
+        </div>
+        <div className="actions">
+          <button className="secondary" onClick={onOpenEventDetail} disabled={!event}>Ver mas</button>
+          <button className="secondary" onClick={onOpenAttendees} disabled={!event}>Quien va</button>
+          <button className="secondary" onClick={onOpenChat} disabled={!event}>Chat evento</button>
+        </div>
+        <button className="secondary full-button" onClick={onOpenBailaCar} disabled={!event}>BailaCar</button>
+      </article>
+
       <section className="calendar-filter">
         <div>
           <small>Calendario de eventos</small>
@@ -1416,67 +1491,14 @@ function HomeView({
             })}
           </div>
         </div>
-        <label className="field-label calendar-date">
-          <span>Elegir otro día</span>
-          <input type="date" value={fechaSeleccionada} onChange={(e) => setFechaSeleccionada(e.target.value)} />
-        </label>
       </section>
 
       <div className="quick-grid">
         <button className="primary" onClick={onOpenEventDetail} disabled={!event}>Evento elegido</button>
-        <button className="primary" onClick={onVoy} disabled={!event}>Voy</button>
-        {esPerfilProfesional && <button onClick={onOpenPublish}>Publicar evento</button>}
-        <button onClick={onOpenMagic}>Haz tu magia</button>
-        <button onClick={onOpenPeople}>Gente</button>
-        <button onClick={onOpenFriends}>Mis amigos</button>
-        <button className={avisosMensajes > 0 ? "with-badge" : ""} onClick={onOpenMessages}>
-          Mensajes
-          {avisosMensajes > 0 && <span className="badge">{avisosMensajes}</span>}
-        </button>
+        <button onClick={onOpenPeople}>Comunidad BAILEMOS</button>
         <button onClick={onOpenProfile}>Mi perfil</button>
-        <button onClick={onOpenGeneralChat}>Chat general</button>
-        {esPerfilProfesional && <button onClick={onOpenOrganizer}>Portal salas</button>}
-        <button onClick={onOpenRating}>Valorar</button>
-        <button onClick={onOpenNotifications}>Notificaciones</button>
-        <button onClick={onOpenLegal}>Legal</button>
-        <button onClick={onOpenPro}>Producto Pro</button>
-        {esAdmin && <button onClick={onOpenAdmin}>Admin</button>}
+        <button onClick={onOpenOrganizer}>Portal salas</button>
       </div>
-
-      <article className="card feature-card">
-        <small>{event ? "Lugar elegido" : "BAILEMOS!"}</small>
-        <h3>{loading ? "Cargando eventos..." : event ? (event.lugarNombre || event.titulo) : "No hay eventos publicados"}</h3>
-        {event && <p className="event-title-line">{event.titulo} - {event.ciudadNombre}</p>}
-        {cartelActual ? (
-          <img className="event-poster" src={cartelActual} alt={`Cartel de ${event.titulo}`} />
-        ) : (
-          <div className="event-poster empty-poster">Cartel pendiente</div>
-        )}
-        <p>
-          {event
-            ? `${event.lugarNombre || "Lugar pendiente"} - Van ${event.asistentes || 0} personas`
-            : "Puedes publicar un evento o entrar al chat general."}
-        </p>
-        {event && (
-          <button className="favorite-place-button" type="button" onClick={() => alternarLugarFavorito(event)}>
-            {esLugarFavorito(event) ? "Quitar de favoritos" : "Marcar sitio favorito"}
-          </button>
-        )}
-        <div className="actions attendance-actions">
-          <button className="secondary" onClick={onInteresado} disabled={!event}>Interesado</button>
-          <button className="primary" onClick={onVoy} disabled={!event}>Voy</button>
-          <button className="secondary" onClick={onNoVoy} disabled={!event}>No voy</button>
-        </div>
-        <div className="actions">
-          <button className="secondary" onClick={onOpenEventDetail} disabled={!event}>Ver mas</button>
-          <button className="secondary" onClick={onOpenAttendees} disabled={!event}>Quien va</button>
-          <button className="secondary" onClick={onOpenChat}>{event ? "Chat evento" : "Chat general"}</button>
-        </div>
-        <button className="secondary full-button" onClick={onOpenBailaCar}>BailaCar</button>
-        {puedeEditarEvento && (
-          <button className="secondary full-button" type="button" onClick={onEditEvent}>Editar evento</button>
-        )}
-      </article>
 
       <section className="card">
         <h3>Playlist BAILEMOS</h3>
@@ -1494,35 +1516,6 @@ function HomeView({
         </div>
       </section>
 
-      <section className="card">
-        <h3>{busquedaActiva ? `Resultados para "${busquedaActiva}"` : "Eventos disponibles"}</h3>
-        <p className="muted">{fechaSeleccionada ? `Mostrando eventos de ${etiquetaFechaSeleccionada}.` : "Mostrando todos los eventos publicados."}</p>
-        {lugaresFavoritosActivos.length > 0 && (
-          <div className="favorite-strip">
-            <strong>Sitios favoritos</strong>
-            {lugaresFavoritosActivos.map((favorito) => (
-              <button key={favorito.clave} type="button" onClick={() => elegirEvento(favorito.evento)}>
-                {favorito.nombre}
-              </button>
-            ))}
-          </div>
-        )}
-        <div className="list">
-          {eventosFiltrados.length === 0 && <p className="muted">No hay fiestas para esa busqueda todavia. Publica una o prueba otra ciudad.</p>}
-          {eventosFiltrados.slice(0, 8).map((item) => (
-            <div key={item.id} className={`event-result-wrap ${Number(item.id) === Number(event?.id) ? "active" : ""} ${esLugarFavorito(item) ? "favorite" : ""}`}>
-              <button className="list-row event-result" onClick={() => elegirEvento(item)}>
-                <strong>{esLugarFavorito(item) ? "Favorito - " : ""}{item.titulo}</strong>
-                <span>{item.ciudadNombre} - {item.lugarNombre || "Lugar pendiente"} - Van {item.asistentes || 0}</span>
-                <small>{item.estilos?.join(" / ") || "Bachata / Salsa / Kizomba"}</small>
-              </button>
-              <button className="favorite-mini" type="button" onClick={() => alternarLugarFavorito(item)}>
-                {esLugarFavorito(item) ? "Quitar" : "Favorito"}
-              </button>
-            </div>
-          ))}
-        </div>
-      </section>
     </section>
   );
 }
@@ -2418,7 +2411,27 @@ function MessagesPanel({ authHeaders, onBack, onOpen, onUpdated }) {
   );
 }
 
-function ProfilePanel({ session, ciudades, authHeaders, onBack, onShowIntro, onSaved }) {
+function ProfilePanel({
+  session,
+  ciudades,
+  event,
+  authHeaders,
+  onBack,
+  onShowIntro,
+  onOpenFriends,
+  onOpenGeneralChat,
+  onOpenMagic,
+  onOpenNotifications,
+  onOpenPro,
+  onOpenAdmin,
+  onOpenLegal,
+  onOpenPublish,
+  onEditEvent,
+  onSaved
+}) {
+  const esAdmin = session?.rol === "ADMIN" || session?.rol === "SUPER_ADMIN";
+  const esPerfilProfesional = ["PROFESIONAL", "ORGANIZADOR", "ACADEMIA", "SALA", "ADMIN", "SUPER_ADMIN"].includes(session?.rol);
+  const puedeEditarEvento = Boolean(event && esPerfilProfesional && (esAdmin || Number(event.organizadorId) === Number(session?.usuarioId)));
   const [form, setForm] = useState({
     nombreArtistico: "",
     biografia: "",
@@ -2570,7 +2583,21 @@ function ProfilePanel({ session, ciudades, authHeaders, onBack, onShowIntro, onS
       <button className="back" onClick={onBack}>Volver</button>
       <h2>Mi perfil</h2>
       <p className="muted">Edita como te ve la comunidad BAILEMOS.</p>
-      <button className="secondary full-button" type="button" onClick={onShowIntro}>Ver bienvenida de BAILEMOS</button>
+
+      <section className="card profile-hub">
+        <h3>Mi BAILEMOS</h3>
+        <div className="profile-actions">
+          <button type="button" onClick={onOpenFriends}>Mis amigos</button>
+          <button type="button" onClick={onOpenGeneralChat}>Chat general</button>
+          <button type="button" onClick={onOpenMagic}>Haz tu magia</button>
+          <button type="button" onClick={onOpenNotifications}>Notificaciones</button>
+          <button type="button" onClick={onOpenPro}>Producto Pro</button>
+          {esAdmin && <button type="button" onClick={onOpenAdmin}>Admin</button>}
+          {esPerfilProfesional && <button type="button" onClick={onOpenPublish}>Publicar evento</button>}
+          {puedeEditarEvento && <button type="button" onClick={onEditEvent}>Editar evento elegido</button>}
+        </div>
+        <button className="secondary full-button" type="button" onClick={onShowIntro}>Ver bienvenida de BAILEMOS</button>
+      </section>
 
       <form className="card stack" onSubmit={guardar}>
         {(form.fotoData || form.fotoUrl) && <img className="profile-preview" src={form.fotoData || form.fotoUrl} alt="Foto de perfil" />}
@@ -2628,6 +2655,8 @@ function ProfilePanel({ session, ciudades, authHeaders, onBack, onShowIntro, onS
         <input value={form.youtube} onChange={(e) => setField("youtube", e.target.value)} placeholder="YouTube" />
         <button className="primary" disabled={saving}>{saving ? "Guardando..." : "Guardar perfil"}</button>
       </form>
+
+      <button className="ghost center-button legal-bottom" type="button" onClick={onOpenLegal}>Privacidad, condiciones y legal</button>
     </section>
   );
 }
@@ -3213,3 +3242,4 @@ function RatingPanel({ session, authHeaders, defaultUserId, onBack }) {
 }
 
 createRoot(document.getElementById("root")).render(<App />);
+
