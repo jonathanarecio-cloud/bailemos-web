@@ -21,6 +21,8 @@ const PROFILE_PHOTO_KEY = "bailemos_profile_photo";
 const EVENTS_CACHE_KEY = "bailemos_events_cache";
 const CITIES_CACHE_KEY = "bailemos_cities_cache";
 const PROFILE_CACHE_KEY = "bailemos_profile_cache";
+const NOTIFICATION_SNAPSHOT_KEY = "bailemos_notification_snapshot";
+const UNREAD_MESSAGES_KEY = "bailemos_unread_messages_count";
 
 function storageGet(key, fallback) {
   try {
@@ -54,6 +56,70 @@ function detectarEstilosEvento(texto) {
   return detectados.length ? detectados : ["BACHATA"];
 }
 
+function crearSnapshotNotificaciones(solicitudes = [], chats = []) {
+  return {
+    solicitudes: solicitudes.map((item) => String(item.id || item.usuarioId)).sort(),
+    chats: chats
+      .map((chat) => `${chat.otroUsuarioId || chat.chatId}:${chat.ultimoMensaje || ""}`)
+      .sort()
+  };
+}
+
+function contarNovedadesNotificaciones(anterior, actual) {
+  if (!anterior) return { total: 0, solicitudes: 0, mensajes: 0 };
+  const solicitudesPrevias = new Set(anterior.solicitudes || []);
+  const chatsPrevios = new Set(anterior.chats || []);
+  const solicitudes = (actual.solicitudes || []).filter((item) => !solicitudesPrevias.has(item)).length;
+  const mensajes = (actual.chats || []).filter((item) => !chatsPrevios.has(item)).length;
+  return { total: solicitudes + mensajes, solicitudes, mensajes };
+}
+
+function leerNoLeidos() {
+  const valor = Number(localStorage.getItem(UNREAD_MESSAGES_KEY) || 0);
+  return Number.isFinite(valor) ? valor : 0;
+}
+
+function guardarNoLeidos(valor) {
+  localStorage.setItem(UNREAD_MESSAGES_KEY, String(Math.max(0, valor)));
+}
+
+function actualizarBadgeIcono(total) {
+  try {
+    if ("setAppBadge" in navigator && total > 0) {
+      navigator.setAppBadge(total);
+    } else if ("clearAppBadge" in navigator && total <= 0) {
+      navigator.clearAppBadge();
+    }
+  } catch {
+    // Algunos navegadores no soportan badge en el icono. La app sigue funcionando.
+  }
+}
+
+async function mostrarNotificacionLocal(titulo, body) {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+
+  try {
+    const registration = await navigator.serviceWorker?.ready;
+    if (registration?.showNotification) {
+      registration.showNotification(titulo, {
+        body,
+        icon: "/bailemos_logo.jpeg",
+        badge: "/bailemos_logo.jpeg",
+        tag: "bailemos-notificaciones"
+      });
+      return;
+    }
+  } catch {
+    // Si el service worker no esta listo, usamos Notification normal.
+  }
+
+  try {
+    new Notification(titulo, { body, icon: "/bailemos_logo.jpeg" });
+  } catch {
+    // Navegador sin soporte completo.
+  }
+}
+
 async function leerErrorServidor(response, fallback = "No se pudo completar la acción.") {
   try {
     const text = await response.text();
@@ -80,6 +146,9 @@ function App() {
   const [miPerfil, setMiPerfil] = useState(() => storageGet(PROFILE_CACHE_KEY, null));
   const [fotoPerfilInicio, setFotoPerfilInicio] = useState(() => localStorage.getItem(PROFILE_PHOTO_KEY) || "");
   const [avisosMensajes, setAvisosMensajes] = useState(0);
+  const [notificationPermission, setNotificationPermission] = useState(() => {
+    return "Notification" in window ? Notification.permission : "unsupported";
+  });
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState("");
 
@@ -100,6 +169,16 @@ function App() {
       cargarAvisos();
     }
   }, [session]);
+
+  useEffect(() => {
+    if (!session?.token) return;
+    const interval = window.setInterval(cargarAvisos, 45000);
+    return () => window.clearInterval(interval);
+  }, [session?.token, authHeaders]);
+
+  useEffect(() => {
+    actualizarBadgeIcono(avisosMensajes);
+  }, [avisosMensajes]);
 
   async function api(path, options = {}) {
     const response = await fetch(`${API_URL}${path}`, {
@@ -163,17 +242,66 @@ function App() {
   async function cargarAvisos() {
     if (!session?.token) {
       setAvisosMensajes(0);
+      actualizarBadgeIcono(0);
       return;
     }
 
     try {
-      const response = await fetch(`${API_URL}/social/amistad/solicitudes`, { headers: authHeaders });
-      if (!response.ok) throw new Error();
-      const solicitudes = await response.json();
-      setAvisosMensajes(solicitudes.length || 0);
+      const [solicitudesResponse, chatsResponse] = await Promise.all([
+        fetch(`${API_URL}/social/amistad/solicitudes`, { headers: authHeaders }),
+        fetch(`${API_URL}/chat/privados`, { headers: authHeaders })
+      ]);
+      if (!solicitudesResponse.ok) throw new Error();
+      const solicitudes = await solicitudesResponse.json();
+      const chats = chatsResponse.ok ? await chatsResponse.json() : [];
+      const snapshotAnterior = storageGet(NOTIFICATION_SNAPSHOT_KEY, null);
+      const snapshotActual = crearSnapshotNotificaciones(solicitudes, chats);
+      const novedades = contarNovedadesNotificaciones(snapshotAnterior, snapshotActual);
+
+      if (snapshotAnterior && novedades.total > 0) {
+        const noLeidos = leerNoLeidos() + novedades.mensajes;
+        guardarNoLeidos(noLeidos);
+        const texto = novedades.solicitudes > 0
+          ? "Tienes una nueva solicitud de amistad en BAILEMOS."
+          : "Tienes un nuevo mensaje en BAILEMOS.";
+        mostrarNotificacionLocal("BAILEMOS!", texto);
+      }
+
+      storageSet(NOTIFICATION_SNAPSHOT_KEY, snapshotActual);
+      setAvisosMensajes((solicitudes.length || 0) + leerNoLeidos());
     } catch {
       setAvisosMensajes(0);
     }
+  }
+
+  async function activarNotificaciones() {
+    if (!("Notification" in window)) {
+      setNotice("Este dispositivo o navegador no permite notificaciones web.");
+      setNotificationPermission("unsupported");
+      return;
+    }
+
+    try {
+      const permiso = await Notification.requestPermission();
+      setNotificationPermission(permiso);
+      if (permiso === "granted") {
+        setNotice("Notificaciones activadas.");
+        mostrarNotificacionLocal("BAILEMOS!", "Te avisaremos cuando tengas mensajes o solicitudes.");
+        cargarAvisos();
+      } else {
+        setNotice("No se activaron las notificaciones. Puedes permitirlas desde ajustes del navegador.");
+      }
+    } catch {
+      setNotice("No se pudieron activar las notificaciones.");
+    }
+  }
+
+  function abrirMensajes() {
+    guardarNoLeidos(0);
+    setAvisosMensajes(0);
+    actualizarBadgeIcono(0);
+    setScreen("messages");
+    window.setTimeout(cargarAvisos, 250);
   }
 
   function guardarSesion(data) {
@@ -186,10 +314,13 @@ function App() {
     localStorage.removeItem("bailemos_session");
     localStorage.removeItem(PROFILE_PHOTO_KEY);
     localStorage.removeItem(PROFILE_CACHE_KEY);
+    localStorage.removeItem(NOTIFICATION_SNAPSHOT_KEY);
+    localStorage.removeItem(UNREAD_MESSAGES_KEY);
     setSession(null);
     setMiPerfil(null);
     setFotoPerfilInicio("");
     setAvisosMensajes(0);
+    actualizarBadgeIcono(0);
     setScreen("welcome");
     setNotice("");
   }
@@ -255,7 +386,16 @@ function App() {
 
   return (
     <main className="app-shell">
-      <Header session={session} perfil={miPerfil} fotoPerfilInicio={fotoPerfilInicio} onLogout={cerrarSesion} />
+      <Header
+        session={session}
+        perfil={miPerfil}
+        fotoPerfilInicio={fotoPerfilInicio}
+        avisosMensajes={avisosMensajes}
+        notificationPermission={notificationPermission}
+        onEnableNotifications={activarNotificaciones}
+        onOpenMessages={abrirMensajes}
+        onLogout={cerrarSesion}
+      />
       {notice && <button className="notice" onClick={() => setNotice("")}>{notice}</button>}
 
       {screen === "home" && (
@@ -274,7 +414,7 @@ function App() {
           onOpenGeneralChat={() => setScreen("general-chat")}
           onOpenPeople={() => setScreen("people")}
           onOpenFriends={() => setScreen("friends")}
-          onOpenMessages={() => setScreen("messages")}
+          onOpenMessages={abrirMensajes}
           avisosMensajes={avisosMensajes}
           onOpenProfile={() => setScreen("profile")}
           onOpenBailaCar={() => setScreen("bailacar")}
@@ -404,7 +544,7 @@ function App() {
           events={events}
           authHeaders={authHeaders}
           onBack={() => setScreen("people")}
-          onOpenMessages={() => setScreen("messages")}
+          onOpenMessages={abrirMensajes}
           onMessage={(persona) => {
             setSelectedUser(persona);
             setScreen("private-chat");
@@ -809,9 +949,19 @@ function ForgotPassword({ onBack }) {
   );
 }
 
-function Header({ session, perfil, fotoPerfilInicio, onLogout }) {
+function Header({
+  session,
+  perfil,
+  fotoPerfilInicio,
+  avisosMensajes = 0,
+  notificationPermission,
+  onEnableNotifications,
+  onOpenMessages,
+  onLogout
+}) {
   const fotoPerfil = perfil?.fotoData || perfil?.fotoUrl || fotoPerfilInicio || "/bailemos_logo.jpeg";
   const nombre = perfil?.nombreArtistico || session?.nombre || "bailador";
+  const notificacionesActivas = notificationPermission === "granted";
 
   return (
     <header className="topbar">
@@ -820,6 +970,20 @@ function Header({ session, perfil, fotoPerfilInicio, onLogout }) {
         <strong>Hola {nombre}</strong>
         <span>Hoy es un buen dia para bailar. Vamos a ello.</span>
       </div>
+      <button
+        className={`icon-action ${avisosMensajes > 0 ? "with-badge" : ""}`}
+        onClick={onOpenMessages}
+        title="Mensajes"
+        aria-label="Abrir mensajes"
+      >
+        M
+        {avisosMensajes > 0 && <span className="badge">{avisosMensajes}</span>}
+      </button>
+      {!notificacionesActivas && notificationPermission !== "unsupported" && (
+        <button className="icon-action" onClick={onEnableNotifications} title="Activar notificaciones" aria-label="Activar notificaciones">
+          N
+        </button>
+      )}
       <button className="ghost" onClick={onLogout}>Salir</button>
     </header>
   );

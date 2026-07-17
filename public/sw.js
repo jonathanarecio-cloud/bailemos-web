@@ -22,3 +22,19 @@ self.addEventListener("fetch", (event) => {
     fetch(event.request).catch(() => caches.match(event.request).then((response) => response || caches.match("/")))
   );
 });
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      const existingClient = clientList.find((client) => "focus" in client);
+      if (existingClient) {
+        return existingClient.focus();
+      }
+      if (clients.openWindow) {
+        return clients.openWindow("/");
+      }
+      return undefined;
+    })
+  );
+});
