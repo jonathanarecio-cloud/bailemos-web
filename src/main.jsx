@@ -58,6 +58,126 @@ function detectarEstilosEvento(texto) {
   return detectados.length ? detectados : ["BACHATA"];
 }
 
+function normalizarTexto(valor) {
+  return (valor || "")
+    .toString()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function limpiarLineaImportada(linea) {
+  return (linea || "")
+    .replace(/[•⁠🎉💃📅📍🎟️🌿🥰]/g, "")
+    .replace(/[━]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const mesesImportacion = {
+  enero: 0,
+  febrero: 1,
+  marzo: 2,
+  abril: 3,
+  mayo: 4,
+  junio: 5,
+  julio: 6,
+  agosto: 7,
+  septiembre: 8,
+  setiembre: 8,
+  octubre: 9,
+  noviembre: 10,
+  diciembre: 11
+};
+
+function buscarCiudadPorTexto(ciudades, texto) {
+  const buscado = normalizarTexto(texto);
+  if (!buscado) return null;
+  return ciudades.find((ciudad) => buscado.includes(normalizarTexto(ciudad.nombre))) || null;
+}
+
+function crearFechaEventoImportado(dia, mes) {
+  const year = new Date().getFullYear();
+  const inicio = new Date(year, mes, Number(dia), 22, 0, 0);
+  const fin = new Date(inicio);
+  fin.setDate(fin.getDate() + 1);
+  fin.setHours(2, 0, 0, 0);
+  return {
+    fechaInicio: inicio.toISOString().slice(0, 16),
+    fechaFin: fin.toISOString().slice(0, 16)
+  };
+}
+
+function parsearProgramacionWhatsApp(texto, ciudades, ciudadIdDefault) {
+  const ciudadDetectada = buscarCiudadPorTexto(ciudades, texto);
+  const ciudadId = ciudadDetectada?.id || ciudadIdDefault || ciudades[0]?.id || 1;
+  const ciudadNombre = ciudadDetectada?.nombre || ciudades.find((item) => Number(item.id) === Number(ciudadId))?.nombre || "Ciudad BAILEMOS";
+  const mesActual = new Date().getMonth();
+  const eventos = [];
+  let fechaActual = null;
+  let pendiente = null;
+
+  const guardarPendiente = () => {
+    if (pendiente?.lugarNombre && fechaActual) {
+      eventos.push(pendiente);
+    }
+    pendiente = null;
+  };
+
+  (texto || "").split("\n").forEach((lineaOriginal) => {
+    const linea = limpiarLineaImportada(lineaOriginal);
+    if (!linea) return;
+
+    const fechaMatch = linea.match(/(?:lunes|martes|miercoles|miércoles|jueves|viernes|sabado|sábado|domingo)?\s*(\d{1,2})(?:\s*de\s*([a-záéíóúñ]+))?/i);
+    const pareceFecha = /lunes|martes|miercoles|miércoles|jueves|viernes|sabado|sábado|domingo|\d{1,2}\s*de\s*/i.test(linea);
+    if (fechaMatch && pareceFecha && !/[()]/.test(linea)) {
+      guardarPendiente();
+      const mesTexto = normalizarTexto(fechaMatch[2] || "");
+      fechaActual = crearFechaEventoImportado(fechaMatch[1], mesesImportacion[mesTexto] ?? mesActual);
+      return;
+    }
+
+    if (!fechaActual) return;
+
+    const esLineaEvento = /^[-]/.test(lineaOriginal.trim()) || /^evento\s+/i.test(linea) || /[()]/.test(lineaOriginal);
+    if (esLineaEvento) {
+      guardarPendiente();
+      const lugarMatch = linea.match(/(.+?)\s*\((.+?)\)\s*$/);
+      const lugarNombre = (lugarMatch ? lugarMatch[1] : linea.replace(/^-\s*/, "").replace(/^evento\s+/i, "")).trim();
+      const municipio = (lugarMatch?.[2] || "").trim();
+      pendiente = {
+        titulo: `Baile en ${lugarNombre}`,
+        descripcion: texto,
+        ciudadId,
+        ciudadNombre,
+        lugarNombre,
+        direccion: municipio || ciudadNombre,
+        fechaInicio: fechaActual.fechaInicio,
+        fechaFin: fechaActual.fechaFin,
+        precio: "",
+        cartelUrl: "",
+        cartelData: "",
+        tipoEvento: "Social",
+        djNombre: "",
+        profesorNombre: "",
+        nivel: "Todos los niveles",
+        telefonoContacto: "",
+        instagram: "",
+        enlaceExterno: "",
+        estilos: detectarEstilosEvento(texto).length ? detectarEstilosEvento(texto) : ["BACHATA", "SALSA", "KIZOMBA"]
+      };
+      return;
+    }
+
+    if (pendiente && /^chiclana|jerez|cadiz|cádiz|conil|barbate|algeciras|san fernando|puerto|bahia|bahía/i.test(linea)) {
+      pendiente.direccion = linea;
+    }
+  });
+
+  guardarPendiente();
+  return eventos;
+}
+
 function claveLugarFavorito(evento) {
   const ciudad = (evento?.ciudadNombre || "").trim().toLowerCase();
   const lugar = (evento?.lugarNombre || evento?.titulo || "").trim().toLowerCase();
@@ -1184,7 +1304,12 @@ function Home({
         <p>{ciudadActiva ? `Ahora estás en ${ciudadActiva.ciudadNombre}` : "Elige ciudad para ver gente, eventos y chat local."}</p>
         <div className="chips">
           {ciudades.map((ciudad) => (
-            <button key={ciudad.id} onClick={() => onCiudad(ciudad)}>{ciudad.nombre}</button>
+            <button key={ciudad.id} onClick={() => {
+              setCiudadBuscada(ciudad.nombre);
+              setBusqueda(ciudad.nombre);
+              setBusquedaActiva(ciudad.nombre);
+              onCiudad(ciudad);
+            }}>{ciudad.nombre}</button>
           ))}
         </div>
       </section>
@@ -1246,17 +1371,12 @@ function HomeView({
   const [fechaSeleccionada, setFechaSeleccionada] = useState("");
   const [mesCalendario, setMesCalendario] = useState(() => new Date());
   const [lugaresFavoritos, setLugaresFavoritos] = useState(() => storageGet(FAVORITE_PLACES_KEY, []));
+  const [ciudadBuscada, setCiudadBuscada] = useState(() => ciudadActiva?.ciudadNombre || "");
   const hayBusquedaActiva = Boolean(busquedaActiva || fechaSeleccionada);
-
-  const normalizar = (valor) => (valor || "")
-    .toString()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
 
   const eventosFiltrados = useMemo(() => {
     if (!hayBusquedaActiva) return [];
-    const texto = normalizar(busquedaActiva);
+    const texto = normalizarTexto(busquedaActiva);
     const filtradosPorBusqueda = texto ? events.filter((item) => {
       const contenido = [
         item.titulo,
@@ -1273,7 +1393,7 @@ function HomeView({
         item.enlaceExterno,
         ...(item.estilos || [])
       ].join(" ");
-      return normalizar(contenido).includes(texto);
+      return normalizarTexto(contenido).includes(texto);
     }) : events;
 
     const filtrados = fechaSeleccionada
@@ -1337,7 +1457,10 @@ function HomeView({
 
   function buscarEventos(eventSubmit) {
     eventSubmit.preventDefault();
-    setBusquedaActiva(busqueda.trim());
+    const texto = busqueda.trim();
+    const ciudadEncontrada = buscarCiudadPorTexto(ciudades, texto);
+    setCiudadBuscada(ciudadEncontrada?.nombre || texto || ciudadActiva?.ciudadNombre || "");
+    setBusquedaActiva(texto);
   }
 
   function aplicarFechaRapida(tipo) {
@@ -1359,6 +1482,7 @@ function HomeView({
 
   function elegirEvento(item) {
     onSelectEvent(item);
+    setCiudadBuscada(item.ciudadNombre || ciudadBuscada);
     setBusquedaActiva(busqueda.trim() || item.ciudadNombre || item.lugarNombre || "");
   }
 
@@ -1394,6 +1518,11 @@ function HomeView({
         </label>
         <button className="primary">Buscar</button>
       </form>
+      {(ciudadBuscada || ciudadActiva?.ciudadNombre) && (
+        <div className="selected-city-pill">
+          Ciudad seleccionada: <strong>{ciudadBuscada || ciudadActiva?.ciudadNombre}</strong>
+        </div>
+      )}
 
       <section className="card search-results-card">
         <h3>{hayBusquedaActiva ? (busquedaActiva ? `Resultados para "${busquedaActiva}"` : "Resultados por fecha") : "Busca tu próximo baile"}</h3>
@@ -2840,6 +2969,8 @@ function PublishEvent({ ciudades, authHeaders, onBack, onCreated, editingEvent =
     estilos: editingEvent?.estilos?.length ? editingEvent.estilos : ["BACHATA"]
   });
   const [textoImportado, setTextoImportado] = useState("");
+  const [eventosDetectados, setEventosDetectados] = useState([]);
+  const [publicandoMasivo, setPublicandoMasivo] = useState(false);
 
   function setField(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -2886,6 +3017,50 @@ function PublishEvent({ ciudades, authHeaders, onBack, onCreated, editingEvent =
     }));
   }
 
+  function detectarProgramacionMasiva() {
+    const detectados = parsearProgramacionWhatsApp(textoImportado, ciudades, form.ciudadId);
+    setEventosDetectados(detectados);
+    if (!detectados.length) {
+      alert("No pude detectar eventos. Revisa que el texto tenga fechas y lugares.");
+    }
+  }
+
+  async function publicarProgramacionMasiva() {
+    if (!eventosDetectados.length) {
+      alert("Primero pulsa Detectar programacion completa.");
+      return;
+    }
+
+    setPublicandoMasivo(true);
+    try {
+      let ultimoEvento = null;
+      for (const item of eventosDetectados) {
+        const response = await fetch(`${API_URL}/eventos`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...authHeaders },
+          body: JSON.stringify({
+            ...item,
+            ciudadId: Number(item.ciudadId),
+            precio: item.precio ? Number(item.precio) : null,
+            latitud: null,
+            longitud: null,
+            cartelUrl: null,
+            cartelData: null
+          })
+        });
+        if (!response.ok) throw new Error();
+        ultimoEvento = await response.json();
+      }
+      alert(`Programacion publicada: ${eventosDetectados.length} eventos.`);
+      setEventosDetectados([]);
+      if (ultimoEvento) onCreated(ultimoEvento);
+    } catch {
+      alert("No se pudo publicar toda la programacion. Revisa que tu perfil sea profesional.");
+    } finally {
+      setPublicandoMasivo(false);
+    }
+  }
+
   async function submit(event) {
     event.preventDefault();
     const payload = {
@@ -2919,9 +3094,22 @@ function PublishEvent({ ciudades, authHeaders, onBack, onCreated, editingEvent =
       <button className="back" onClick={onBack}>Volver</button>
       <h2>{editingEvent ? "Editar evento" : "Publicar evento"}</h2>
       <section className="card stack">
-        <h3>Detectar estilos automáticamente</h3>
+        <h3>Importar desde WhatsApp</h3>
+        <p className="muted">Pega una programacion completa. BAILEMOS detecta fechas, salas y municipios para crear los eventos automaticamente.</p>
         <textarea value={textoImportado} onChange={(event) => setTextoImportado(event.target.value)} placeholder="Pega texto del evento. Si pone Bachata, Salsa o Kizomba, BAILEMOS los marcará automáticamente." />
         <button className="secondary" type="button" onClick={prepararDesdeTexto}>Rellenar con este texto</button>
+        <button className="secondary" type="button" onClick={detectarProgramacionMasiva}>Detectar programacion completa</button>
+        {eventosDetectados.length > 0 && (
+          <div className="import-preview">
+            <strong>{eventosDetectados.length} eventos detectados</strong>
+            {eventosDetectados.slice(0, 12).map((item, index) => (
+              <span key={`${item.lugarNombre}-${index}`}>{item.fechaInicio?.slice(0, 10)} - {item.lugarNombre} - {item.direccion}</span>
+            ))}
+            <button className="primary" type="button" disabled={publicandoMasivo} onClick={publicarProgramacionMasiva}>
+              {publicandoMasivo ? "Publicando..." : "Publicar todos los eventos detectados"}
+            </button>
+          </div>
+        )}
       </section>
       <form className="card stack" onSubmit={submit}>
         <input value={form.titulo} onChange={(e) => setField("titulo", e.target.value)} placeholder="Nombre del evento" required />
@@ -3002,6 +3190,8 @@ function OrganizerPortal({ ciudades, authHeaders, onBack, onCreated }) {
     enlaceExterno: "",
     estilos: ["BACHATA"]
   });
+  const [eventosDetectados, setEventosDetectados] = useState([]);
+  const [publicandoMasivo, setPublicandoMasivo] = useState(false);
 
   function setField(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -3048,6 +3238,50 @@ function OrganizerPortal({ ciudades, authHeaders, onBack, onCreated }) {
     }));
   }
 
+  function detectarProgramacionMasiva() {
+    const detectados = parsearProgramacionWhatsApp(texto, ciudades, form.ciudadId);
+    setEventosDetectados(detectados);
+    if (!detectados.length) {
+      alert("No pude detectar eventos. Revisa que el texto tenga fechas y lugares.");
+    }
+  }
+
+  async function publicarProgramacionMasiva() {
+    if (!eventosDetectados.length) {
+      alert("Primero pulsa Detectar programacion completa.");
+      return;
+    }
+
+    setPublicandoMasivo(true);
+    try {
+      let ultimoEvento = null;
+      for (const item of eventosDetectados) {
+        const response = await fetch(`${API_URL}/eventos`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...authHeaders },
+          body: JSON.stringify({
+            ...item,
+            ciudadId: Number(item.ciudadId),
+            precio: item.precio ? Number(item.precio) : null,
+            latitud: null,
+            longitud: null,
+            cartelUrl: null,
+            cartelData: null
+          })
+        });
+        if (!response.ok) throw new Error();
+        ultimoEvento = await response.json();
+      }
+      alert(`Programacion publicada: ${eventosDetectados.length} eventos.`);
+      setEventosDetectados([]);
+      if (ultimoEvento) onCreated(ultimoEvento);
+    } catch {
+      alert("No se pudo publicar toda la programacion. Revisa que tu perfil sea profesional.");
+    } finally {
+      setPublicandoMasivo(false);
+    }
+  }
+
   async function submit(event) {
     event.preventDefault();
     const payload = {
@@ -3086,6 +3320,18 @@ function OrganizerPortal({ ciudades, authHeaders, onBack, onCreated }) {
         <h3>Importar desde publicación</h3>
         <textarea value={texto} onChange={(event) => setTexto(event.target.value)} placeholder="Pega aquí texto de Instagram, web, cartel o descripción del evento" />
         <button className="secondary" type="button" onClick={prepararDesdeTexto}>Preparar evento con este texto</button>
+        <button className="secondary" type="button" onClick={detectarProgramacionMasiva}>Detectar programacion completa</button>
+        {eventosDetectados.length > 0 && (
+          <div className="import-preview">
+            <strong>{eventosDetectados.length} eventos detectados</strong>
+            {eventosDetectados.slice(0, 12).map((item, index) => (
+              <span key={`${item.lugarNombre}-${index}`}>{item.fechaInicio?.slice(0, 10)} - {item.lugarNombre} - {item.direccion}</span>
+            ))}
+            <button className="primary" type="button" disabled={publicandoMasivo} onClick={publicarProgramacionMasiva}>
+              {publicandoMasivo ? "Publicando..." : "Publicar todos los eventos detectados"}
+            </button>
+          </div>
+        )}
       </section>
 
       <form className="card stack" onSubmit={submit}>
