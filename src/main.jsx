@@ -2,19 +2,6 @@
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
-window.addEventListener("error", () => {
-  const root = document.getElementById("root");
-  if (root && !root.textContent.trim()) {
-    root.innerHTML = `
-      <main class="welcome">
-        <img class="logo hero-logo" src="/bailemos_logo.jpeg" alt="BAILEMOS!" />
-        <h1>BAILEMOS!</h1>
-        <p>No pudimos abrir tu sesion guardada. Reinicia la app y vuelve a entrar.</p>
-        <button class="primary" onclick="localStorage.clear(); location.reload();">Reiniciar BAILEMOS</button>
-      </main>
-    `;
-  }
-});
 const API_URL = "https://bailemos-api.onrender.com";
 
 const ciudadesIniciales = [
@@ -187,23 +174,9 @@ function t(lang, key) {
 }
 
 function getPreferredLanguage() {
-  try {
-    const saved = localStorage.getItem(LANG_KEY);
-    if (saved === "en" || saved === "es") return saved;
-  } catch {
-    // La app sigue en espanol si el navegador bloquea el almacenamiento.
-  }
+  const saved = localStorage.getItem(LANG_KEY);
+  if (saved === "en" || saved === "es") return saved;
   return (navigator.language || "es").toLowerCase().startsWith("en") ? "en" : "es";
-}
-
-function leerSesionGuardada() {
-  try {
-    const saved = localStorage.getItem("bailemos_session");
-    return saved ? JSON.parse(saved) : null;
-  } catch {
-    localStorage.removeItem("bailemos_session");
-    return null;
-  }
 }
 
 function LanguageToggle({ lang, onChange }) {
@@ -511,7 +484,10 @@ async function leerErrorServidor(response, fallback = "No se pudo completar la a
 }
 
 function App() {
-  const [session, setSession] = useState(leerSesionGuardada);
+  const [session, setSession] = useState(() => {
+    const saved = localStorage.getItem("bailemos_session");
+    return saved ? JSON.parse(saved) : null;
+  });
   const [screen, setScreen] = useState(() => {
     if (!session) return "welcome";
     return localStorage.getItem(INTRO_SEEN_KEY) === "true" ? "home" : "intro";
@@ -535,6 +511,11 @@ function App() {
   const authHeaders = useMemo(() => {
     return session?.token ? { Authorization: `Bearer ${session.token}` } : {};
   }, [session]);
+
+  useEffect(() => {
+    localStorage.setItem(LANG_KEY, lang);
+    document.documentElement.lang = lang;
+  }, [lang]);
 
   useEffect(() => {
     localStorage.setItem(LANG_KEY, lang);
