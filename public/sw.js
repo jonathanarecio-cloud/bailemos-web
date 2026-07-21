@@ -1,4 +1,4 @@
-const CACHE_NAME = "bailemos-pro-v4";
+const CACHE_NAME = "bailemos-pro-v5";
 const STATIC_ASSETS = ["/", "/manifest.webmanifest", "/bailemos_logo.jpeg"];
 
 self.addEventListener("install", (event) => {

@@ -240,6 +240,14 @@ function storageSet(key, value) {
   }
 }
 
+function listaSegura(value, fallback = []) {
+  return Array.isArray(value) ? value : fallback;
+}
+
+function objetoSeguro(value, fallback = null) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : fallback;
+}
+
 function leerArchivoComoDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -517,13 +525,13 @@ function App() {
     if (!session) return "welcome";
     return localStorage.getItem(INTRO_SEEN_KEY) === "true" ? "home" : "intro";
   });
-  const [events, setEvents] = useState(() => storageGet(EVENTS_CACHE_KEY, []));
+  const [events, setEvents] = useState(() => listaSegura(storageGet(EVENTS_CACHE_KEY, [])));
   const [event, setEvent] = useState(null);
-  const [ciudades, setCiudades] = useState(() => storageGet(CITIES_CACHE_KEY, ciudadesIniciales));
+  const [ciudades, setCiudades] = useState(() => listaSegura(storageGet(CITIES_CACHE_KEY, ciudadesIniciales), ciudadesIniciales));
   const [ciudadActiva, setCiudadActiva] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [editingEvent, setEditingEvent] = useState(null);
-  const [miPerfil, setMiPerfil] = useState(() => storageGet(PROFILE_CACHE_KEY, null));
+  const [miPerfil, setMiPerfil] = useState(() => objetoSeguro(storageGet(PROFILE_CACHE_KEY, null)));
   const [fotoPerfilInicio, setFotoPerfilInicio] = useState(() => localStorage.getItem(PROFILE_PHOTO_KEY) || "");
   const [avisosMensajes, setAvisosMensajes] = useState(0);
   const [notificationPermission, setNotificationPermission] = useState(() => {
@@ -591,7 +599,7 @@ function App() {
       ]);
 
       if (eventosResult.status === "fulfilled") {
-        const eventosData = eventosResult.value || [];
+        const eventosData = listaSegura(eventosResult.value || []);
         setEvents(eventosData);
         storageSet(EVENTS_CACHE_KEY, eventosData);
         setEvent((actual) => {
@@ -601,7 +609,7 @@ function App() {
       }
 
       if (ciudadesResult.status === "fulfilled") {
-        const ciudadesData = ciudadesResult.value?.length ? ciudadesResult.value : ciudadesIniciales;
+        const ciudadesData = listaSegura(ciudadesResult.value).length ? listaSegura(ciudadesResult.value) : ciudadesIniciales;
         setCiudades(ciudadesData);
         storageSet(CITIES_CACHE_KEY, ciudadesData);
       }
@@ -1464,6 +1472,8 @@ function Home({
   authHeaders,
   lang = "es"
 }) {
+  const eventosSeguros = listaSegura(events);
+  const ciudadesSeguras = listaSegura(ciudades, ciudadesIniciales);
   const esAdmin = session?.rol === "ADMIN" || session?.rol === "SUPER_ADMIN";
   const esPerfilProfesional = ["PROFESIONAL", "ORGANIZADOR", "ACADEMIA", "SALA", "ADMIN", "SUPER_ADMIN"].includes(session?.rol);
 
@@ -1511,7 +1521,7 @@ function Home({
         <h3>{t(lang, "cityNow")}</h3>
         <p>{ciudadActiva ? `Ahora estÃ¡s en ${ciudadActiva.ciudadNombre}` : "Elige ciudad para ver gente, eventos y chat local."}</p>
         <div className="chips">
-          {ciudades.map((ciudad) => (
+          {ciudadesSeguras.map((ciudad) => (
             <button key={ciudad.id} onClick={() => onCiudad(ciudad)}>{ciudad.nombre}</button>
           ))}
         </div>
@@ -1520,8 +1530,8 @@ function Home({
       <section className="card">
         <h3>Eventos disponibles</h3>
         <div className="list">
-          {events.length === 0 && <p className="muted">AÃºn no hay eventos. Publica el primero.</p>}
-          {events.map((item) => (
+          {eventosSeguros.length === 0 && <p className="muted">AÃºn no hay eventos. Publica el primero.</p>}
+          {eventosSeguros.map((item) => (
             <div key={item.id} className="list-row">
               <strong>{item.titulo}</strong>
               <span>{item.ciudadNombre} - {item.lugarNombre}</span>
@@ -1566,6 +1576,8 @@ function HomeView({
   onCiudad,
   lang
 }) {
+  const eventosSeguros = listaSegura(events);
+  const ciudadesSeguras = listaSegura(ciudades, ciudadesIniciales);
   const esAdmin = session?.rol === "ADMIN" || session?.rol === "SUPER_ADMIN";
   const esPerfilProfesional = ["PROFESIONAL", "ORGANIZADOR", "ACADEMIA", "SALA", "ADMIN", "SUPER_ADMIN"].includes(session?.rol);
   const puedeEditarEvento = Boolean(event && esPerfilProfesional && (esAdmin || Number(event.organizadorId) === Number(session?.usuarioId)));
@@ -1574,14 +1586,14 @@ function HomeView({
   const [busquedaActiva, setBusquedaActiva] = useState("");
   const [fechaSeleccionada, setFechaSeleccionada] = useState("");
   const [mesCalendario, setMesCalendario] = useState(() => new Date());
-  const [lugaresFavoritos, setLugaresFavoritos] = useState(() => storageGet(FAVORITE_PLACES_KEY, []));
+  const [lugaresFavoritos, setLugaresFavoritos] = useState(() => listaSegura(storageGet(FAVORITE_PLACES_KEY, [])));
   const [ciudadBuscada, setCiudadBuscada] = useState(() => ciudadActiva?.ciudadNombre || "");
   const hayBusquedaActiva = Boolean(busquedaActiva || fechaSeleccionada);
 
   const eventosFiltrados = useMemo(() => {
     if (!hayBusquedaActiva) return [];
     const texto = normalizarTexto(busquedaActiva);
-    const filtradosPorBusqueda = texto ? events.filter((item) => {
+    const filtradosPorBusqueda = texto ? eventosSeguros.filter((item) => {
       const contenido = [
         item.titulo,
         item.descripcion,
@@ -1598,7 +1610,7 @@ function HomeView({
         ...(item.estilos || [])
       ].join(" ");
       return normalizarTexto(contenido).includes(texto);
-    }) : events;
+    }) : eventosSeguros;
 
     const filtrados = fechaSeleccionada
       ? filtradosPorBusqueda.filter((item) => esMismaFecha(item.fechaInicio, fechaSeleccionada))
@@ -1610,12 +1622,12 @@ function HomeView({
       if (aFavorito !== bFavorito) return bFavorito - aFavorito;
       return new Date(a.fechaInicio || 0) - new Date(b.fechaInicio || 0);
     });
-  }, [busquedaActiva, events, lugaresFavoritos, fechaSeleccionada, hayBusquedaActiva]);
+  }, [busquedaActiva, eventosSeguros, lugaresFavoritos, fechaSeleccionada, hayBusquedaActiva]);
 
   const eventosFechaSeleccionada = useMemo(() => {
-    if (!fechaSeleccionada) return events.length;
-    return events.filter((item) => esMismaFecha(item.fechaInicio, fechaSeleccionada)).length;
-  }, [events, fechaSeleccionada]);
+    if (!fechaSeleccionada) return eventosSeguros.length;
+    return eventosSeguros.filter((item) => esMismaFecha(item.fechaInicio, fechaSeleccionada)).length;
+  }, [eventosSeguros, fechaSeleccionada]);
 
   const etiquetaFechaSeleccionada = fechaSeleccionada
     ? new Date(`${fechaSeleccionada}T12:00:00`).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })
@@ -1625,26 +1637,26 @@ function HomeView({
 
   const eventosPorDia = useMemo(() => {
     const mapa = new Map();
-    events.forEach((item) => {
+    eventosSeguros.forEach((item) => {
       if (!item.fechaInicio) return;
       const clave = fechaLocalInput(new Date(item.fechaInicio));
       mapa.set(clave, (mapa.get(clave) || 0) + 1);
     });
     return mapa;
-  }, [events]);
+  }, [eventosSeguros]);
 
   const etiquetaMesCalendario = mesCalendario.toLocaleDateString("es-ES", { month: "long", year: "numeric" });
 
   const lugaresFavoritosActivos = useMemo(() => {
     const mapa = new Map();
-    events.forEach((item) => {
+    eventosSeguros.forEach((item) => {
       const clave = claveLugarFavorito(item);
       if (lugaresFavoritos.includes(clave) && !mapa.has(clave)) {
         mapa.set(clave, { clave, nombre: nombreLugarFavorito(item), evento: item });
       }
     });
     return Array.from(mapa.values());
-  }, [events, lugaresFavoritos]);
+  }, [eventosSeguros, lugaresFavoritos]);
 
   function esLugarFavorito(item) {
     return lugaresFavoritos.includes(claveLugarFavorito(item));
@@ -1662,7 +1674,7 @@ function HomeView({
   function buscarEventos(eventSubmit) {
     eventSubmit.preventDefault();
     const texto = busqueda.trim();
-    const ciudadEncontrada = buscarCiudadPorTexto(ciudades, texto);
+    const ciudadEncontrada = buscarCiudadPorTexto(ciudadesSeguras, texto);
     setCiudadBuscada(ciudadEncontrada?.nombre || texto || ciudadActiva?.ciudadNombre || "");
     setBusquedaActiva(texto);
   }
@@ -1696,8 +1708,8 @@ function HomeView({
       <section className="home-status">
         <div>
           <small>{t(lang, "bailemosToday")}</small>
-          <strong>{events.length}</strong>
-          <span>{events.length === 1 ? t(lang, "eventAvailable") : t(lang, "eventsAvailable")}</span>
+          <strong>{eventosSeguros.length}</strong>
+          <span>{eventosSeguros.length === 1 ? t(lang, "eventAvailable") : t(lang, "eventsAvailable")}</span>
         </div>
         <div>
           <small>{t(lang, "messages")}</small>
@@ -1847,7 +1859,7 @@ function HomeView({
         <h3>{t(lang, "cityNow")}</h3>
         <p>{ciudadActiva ? `${t(lang, "nowIn")} ${ciudadActiva.ciudadNombre}` : t(lang, "cityNowText")}</p>
         <div className="chips">
-          {ciudades.map((ciudad) => (
+          {ciudadesSeguras.map((ciudad) => (
             <button key={ciudad.id} onClick={() => onCiudad(ciudad)}>{ciudad.nombre}</button>
           ))}
         </div>
