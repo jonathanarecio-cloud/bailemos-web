@@ -2,15 +2,16 @@
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
-window.addEventListener("error", () => {
+window.addEventListener("error", (event) => {
   const root = document.getElementById("root");
   if (root && !root.textContent.trim()) {
     root.innerHTML = `
       <main class="welcome">
         <img class="logo hero-logo" src="/bailemos_logo.jpeg" alt="BAILEMOS!" />
         <h1>BAILEMOS!</h1>
-        <p>No pudimos abrir tu sesion guardada. Reinicia la app y vuelve a entrar.</p>
-        <button class="primary" onclick="localStorage.clear(); location.reload();">Reiniciar BAILEMOS</button>
+        <p>No pudimos abrir esta version correctamente. Pulsa reparar para limpiar datos antiguos del movil.</p>
+        <small class="muted">${event?.message || "Error de inicio"}</small>
+        <button class="primary" onclick="localStorage.removeItem('bailemos_session'); localStorage.removeItem('bailemos_events_cache'); localStorage.removeItem('bailemos_cities_cache'); localStorage.removeItem('bailemos_profile_cache'); location.href='/?repair=' + Date.now();">Reparar BAILEMOS</button>
       </main>
     `;
   }
@@ -1460,7 +1461,8 @@ function Home({
   onOpenAdmin,
   onOpenAttendees,
   onCiudad,
-  authHeaders
+  authHeaders,
+  lang = "es"
 }) {
   const esAdmin = session?.rol === "ADMIN" || session?.rol === "SUPER_ADMIN";
   const esPerfilProfesional = ["PROFESIONAL", "ORGANIZADOR", "ACADEMIA", "SALA", "ADMIN", "SUPER_ADMIN"].includes(session?.rol);
@@ -1510,12 +1512,7 @@ function Home({
         <p>{ciudadActiva ? `Ahora estÃ¡s en ${ciudadActiva.ciudadNombre}` : "Elige ciudad para ver gente, eventos y chat local."}</p>
         <div className="chips">
           {ciudades.map((ciudad) => (
-            <button key={ciudad.id} onClick={() => {
-              setCiudadBuscada(ciudad.nombre);
-              setBusqueda(ciudad.nombre);
-              setBusquedaActiva(ciudad.nombre);
-              onCiudad(ciudad);
-            }}>{ciudad.nombre}</button>
+            <button key={ciudad.id} onClick={() => onCiudad(ciudad)}>{ciudad.nombre}</button>
           ))}
         </div>
       </section>
