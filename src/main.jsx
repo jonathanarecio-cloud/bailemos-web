@@ -775,6 +775,8 @@ function App() {
         onLogout={cerrarSesion}
         lang={lang}
         onLangChange={setLang}
+        lang={lang}
+        onLangChange={setLang}
       />
       {notice && <button className="notice" onClick={() => setNotice("")}>{notice}</button>}
 
@@ -836,7 +838,6 @@ function App() {
           onOpenAttendees={() => setScreen("attendees")}
           onOpenChat={() => setScreen("event-chat")}
           onOpenBailaCar={() => setScreen("bailacar")}
-          lang={lang}
         />
       )}
 
@@ -1919,7 +1920,7 @@ function AttendeesPanel({ event, authHeaders, onBack, onOpenProfile }) {
   );
 }
 
-function EventDetailPanel({ event, onBack, onInteresado, onVoy, onNoVoy, onOpenAttendees, onOpenChat, onOpenBailaCar, lang = "es" }) {
+function EventDetailPanel({ event, onBack, onInteresado, onVoy, onNoVoy, onOpenAttendees, onOpenChat, onOpenBailaCar }) {
   const cartel = event?.cartelData || event?.cartelUrl || "";
   const fechaInicio = event?.fechaInicio ? new Date(event.fechaInicio).toLocaleString("es-ES") : "Fecha pendiente";
   const fechaFin = event?.fechaFin ? new Date(event.fechaFin).toLocaleString("es-ES") : "Sin hora de fin";
