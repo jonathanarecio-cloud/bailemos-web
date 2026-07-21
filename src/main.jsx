@@ -1,11 +1,11 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
 const API_URL = "https://bailemos-api.onrender.com";
 
 const ciudadesIniciales = [
-  { id: 1, nombre: "MÃ¡laga" },
+  { id: 1, nombre: "Málaga" },
   { id: 2, nombre: "Madrid" },
   { id: 3, nombre: "Barcelona" },
   { id: 4, nombre: "Valencia" },
@@ -25,175 +25,6 @@ const NOTIFICATION_SNAPSHOT_KEY = "bailemos_notification_snapshot";
 const UNREAD_MESSAGES_KEY = "bailemos_unread_messages_count";
 const FAVORITE_PLACES_KEY = "bailemos_favorite_places";
 const INTRO_SEEN_KEY = "bailemos_intro_seen";
-
-const LANG_KEY = "bailemos_language";
-const DATA_REFRESH_MS = 120000;
-const LAST_SYNC_KEY = "bailemos_last_sync";
-
-const translations = {
-  es: {
-    profile: "Perfil",
-    helloPrefix: "Hola",
-    helloSub: "Hoy es un buen dia para bailar. Vamos a ello.",
-    messages: "Mensajes",
-    enableNotifications: "Activar notificaciones",
-    logout: "Salir",
-    login: "Iniciar sesion",
-    register: "Crear cuenta",
-    privacy: "Privacidad y condiciones",
-    welcomeTag: "Tu mundo del baile en una sola app",
-    welcomeText: "Esta es tu app diseñada para ayudarte a gestionar todo tu mundo del baile: eventos, salas, amigos, chats, transporte y planes.",
-    start: "Comenzamos",
-    benefit1: "Encuentra fiestas, salas y eventos por ciudad y fecha.",
-    benefit2: "Organiza tu calendario y guarda tus sitios favoritos.",
-    benefit3: "Mira quien va antes de salir y chatea por evento.",
-    benefit4: "Haz amigos dentro de la comunidad del baile.",
-    benefit5: "Comparte coche con BailaCar para llegar mejor.",
-    benefit6: "Crea tu perfil, recibe valoraciones y conecta con profesionales.",
-    todayTitle: "Donde se baila hoy",
-    bailemosToday: "BAILEMOS hoy",
-    eventAvailable: "evento disponible",
-    eventsAvailable: "eventos disponibles",
-    pendingNotice: "aviso pendiente",
-    pendingNotices: "avisos pendientes",
-    cityRoomStyle: "Ciudad, sala o estilo",
-    searchPlaceholder: "Ejemplo: Malaga, Atrevete, bachata...",
-    date: "Fecha",
-    search: "Buscar",
-    selectedCity: "Ciudad seleccionada:",
-    resultsFor: "Resultados para",
-    dateResults: "Resultados por fecha",
-    nextDance: "Busca tu próximo baile",
-    showingEvents: "Mostrando eventos de",
-    searchHint: "Busca por ciudad, sala, estilo o elige una fecha.",
-    favoritePlaces: "Sitios favoritos",
-    emptySearch: "Escribe una ciudad, sala o estilo y elige una fecha si quieres afinar la búsqueda.",
-    noParties: "No hay fiestas para esa busqueda todavia. Prueba otra fecha, ciudad o sala.",
-    chosenPlace: "Lugar elegido",
-    noEvents: "No hay eventos publicados",
-    posterPending: "Cartel pendiente",
-    chooseEvent: "Busca y elige un evento para ver sus acciones.",
-    removeFavorite: "Quitar de favoritos",
-    markFavorite: "Marcar sitio favorito",
-    going: "Voy",
-    seeMore: "Ver mas",
-    whoGoes: "Quien va",
-    eventChat: "Chat evento",
-    eventCalendar: "Calendario de eventos",
-    foundEvent: "1 evento encontrado",
-    foundEvents: "eventos encontrados",
-    today: "Hoy",
-    tomorrow: "Mañana",
-    saturday: "Sábado",
-    all: "Todos",
-    chosenEvent: "Evento elegido",
-    community: "Comunidad BAILEMOS",
-    myProfile: "Mi perfil",
-    venuePortal: "Portal salas",
-    playlist: "Playlist BAILEMOS",
-    playlistText: "Musica para calentar la pista: bachata, salsa y kizomba.",
-    spotify: "Escuchar en Spotify",
-    cityNow: "Estoy en una ciudad",
-    cityNowText: "Elige ciudad para ver gente, eventos y chat local.",
-    nowIn: "Ahora estas en",
-    langEs: "ES",
-    langEn: "EN"
-  },
-  en: {
-    profile: "Profile",
-    helloPrefix: "Hi",
-    helloSub: "Today is a good day to dance. Let's go.",
-    messages: "Messages",
-    enableNotifications: "Enable notifications",
-    logout: "Log out",
-    login: "Log in",
-    register: "Create account",
-    privacy: "Privacy and terms",
-    welcomeTag: "Your dance world in one app",
-    welcomeText: "This app helps you manage your whole dance life: events, venues, friends, chats, transport and plans.",
-    start: "Let's start",
-    benefit1: "Find parties, venues and events by city and date.",
-    benefit2: "Organize your calendar and save your favorite places.",
-    benefit3: "See who is going before you leave and chat by event.",
-    benefit4: "Make friends inside the dance community.",
-    benefit5: "Share rides with BailaCar to arrive easier.",
-    benefit6: "Create your profile, receive ratings and connect with professionals.",
-    todayTitle: "Where to dance today",
-    bailemosToday: "BAILEMOS today",
-    eventAvailable: "event available",
-    eventsAvailable: "events available",
-    pendingNotice: "pending notice",
-    pendingNotices: "pending notices",
-    cityRoomStyle: "City, venue or style",
-    searchPlaceholder: "Example: Malaga, Atrevete, bachata...",
-    date: "Date",
-    search: "Search",
-    selectedCity: "Selected city:",
-    resultsFor: "Results for",
-    dateResults: "Results by date",
-    nextDance: "Find your next dance",
-    showingEvents: "Showing events for",
-    searchHint: "Search by city, venue, style or choose a date.",
-    favoritePlaces: "Favorite places",
-    emptySearch: "Type a city, venue or style and choose a date if you want to refine the search.",
-    noParties: "No parties found yet. Try another date, city or venue.",
-    chosenPlace: "Selected place",
-    noEvents: "No events published",
-    posterPending: "Poster pending",
-    chooseEvent: "Search and choose an event to see its actions.",
-    removeFavorite: "Remove from favorites",
-    markFavorite: "Save place",
-    going: "I'm going",
-    seeMore: "More info",
-    whoGoes: "Who's going",
-    eventChat: "Event chat",
-    eventCalendar: "Event calendar",
-    foundEvent: "1 event found",
-    foundEvents: "events found",
-    today: "Today",
-    tomorrow: "Tomorrow",
-    saturday: "Saturday",
-    all: "All",
-    chosenEvent: "Selected event",
-    community: "BAILEMOS Community",
-    myProfile: "My profile",
-    venuePortal: "Venue portal",
-    playlist: "BAILEMOS Playlist",
-    playlistText: "Music to warm up the dance floor: bachata, salsa and kizomba.",
-    spotify: "Listen on Spotify",
-    cityNow: "I am in a city",
-    cityNowText: "Choose a city to see people, events and local chat.",
-    nowIn: "You are now in",
-    langEs: "ES",
-    langEn: "EN"
-  }
-};
-
-function t(lang, key) {
-  return translations[lang]?.[key] || translations.es[key] || key;
-}
-
-function getPreferredLanguage() {
-  const saved = localStorage.getItem(LANG_KEY);
-  if (saved === "en" || saved === "es") return saved;
-  return (navigator.language || "es").toLowerCase().startsWith("en") ? "en" : "es";
-}
-
-function LanguageToggle({ lang, onChange }) {
-  return (
-    <div className="language-toggle" aria-label="Idioma">
-      <button type="button" className={lang === "es" ? "active" : ""} onClick={() => onChange("es")}>ES</button>
-      <button type="button" className={lang === "en" ? "active" : ""} onClick={() => onChange("en")}>EN</button>
-    </div>
-  );
-}
-
-function fetchJsonRapido(url, options = {}, timeoutMs = 8000) {
-  const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
-  return fetch(url, { ...options, signal: controller.signal }).finally(() => window.clearTimeout(timeout));
-}
-
 
 function storageGet(key, fallback) {
   try {
@@ -237,8 +68,8 @@ function normalizarTexto(valor) {
 
 function limpiarLineaImportada(linea) {
   return (linea || "")
-    .replace(/[â€¢â ðŸŽ‰ðŸ’ƒðŸ“…ðŸ“ðŸŽŸï¸ðŸŒ¿ðŸ¥°]/g, "")
-    .replace(/[â”]+/g, "")
+    .replace(/[•⁠🎉💃📅📍🎟️🌿🥰]/g, "")
+    .replace(/[━]+/g, "")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -297,8 +128,8 @@ function parsearProgramacionWhatsApp(texto, ciudades, ciudadIdDefault) {
     const linea = limpiarLineaImportada(lineaOriginal);
     if (!linea) return;
 
-    const fechaMatch = linea.match(/(?:lunes|martes|miercoles|miÃ©rcoles|jueves|viernes|sabado|sÃ¡bado|domingo)?\s*(\d{1,2})(?:\s*de\s*([a-zÃ¡Ã©Ã­Ã³ÃºÃ±]+))?/i);
-    const pareceFecha = /lunes|martes|miercoles|miÃ©rcoles|jueves|viernes|sabado|sÃ¡bado|domingo|\d{1,2}\s*de\s*/i.test(linea);
+    const fechaMatch = linea.match(/(?:lunes|martes|miercoles|miércoles|jueves|viernes|sabado|sábado|domingo)?\s*(\d{1,2})(?:\s*de\s*([a-záéíóúñ]+))?/i);
+    const pareceFecha = /lunes|martes|miercoles|miércoles|jueves|viernes|sabado|sábado|domingo|\d{1,2}\s*de\s*/i.test(linea);
     if (fechaMatch && pareceFecha && !/[()]/.test(linea)) {
       guardarPendiente();
       const mesTexto = normalizarTexto(fechaMatch[2] || "");
@@ -338,7 +169,7 @@ function parsearProgramacionWhatsApp(texto, ciudades, ciudadIdDefault) {
       return;
     }
 
-    if (pendiente && /^chiclana|jerez|cadiz|cÃ¡diz|conil|barbate|algeciras|san fernando|puerto|bahia|bahÃ­a/i.test(linea)) {
+    if (pendiente && /^chiclana|jerez|cadiz|cádiz|conil|barbate|algeciras|san fernando|puerto|bahia|bahía/i.test(linea)) {
       pendiente.direccion = linea;
     }
   });
@@ -472,7 +303,7 @@ async function mostrarNotificacionLocal(titulo, body) {
   }
 }
 
-async function leerErrorServidor(response, fallback = "No se pudo completar la acciÃ³n.") {
+async function leerErrorServidor(response, fallback = "No se pudo completar la acción.") {
   try {
     const text = await response.text();
     if (!text) return fallback;
@@ -506,21 +337,10 @@ function App() {
   });
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState("");
-  const [lang, setLang] = useState(getPreferredLanguage);
 
   const authHeaders = useMemo(() => {
     return session?.token ? { Authorization: `Bearer ${session.token}` } : {};
   }, [session]);
-
-  useEffect(() => {
-    localStorage.setItem(LANG_KEY, lang);
-    document.documentElement.lang = lang;
-  }, [lang]);
-
-  useEffect(() => {
-    localStorage.setItem(LANG_KEY, lang);
-    document.documentElement.lang = lang;
-  }, [lang]);
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
@@ -538,7 +358,7 @@ function App() {
 
   useEffect(() => {
     if (!session?.token) return;
-    const interval = window.setInterval(cargarAvisos, 90000);
+    const interval = window.setInterval(cargarAvisos, 45000);
     return () => window.clearInterval(interval);
   }, [session?.token, authHeaders]);
 
@@ -547,7 +367,7 @@ function App() {
   }, [avisosMensajes]);
 
   async function api(path, options = {}) {
-    const response = await fetchJsonRapido(`${API_URL}${path}`, {
+    const response = await fetch(`${API_URL}${path}`, {
       ...options,
       headers: {
         "Content-Type": "application/json",
@@ -587,8 +407,6 @@ function App() {
       }
 
       setCiudadActiva(activaResult.status === "fulfilled" ? activaResult.value : null);
-
-      localStorage.setItem(LAST_SYNC_KEY, String(Date.now()));
 
       if (perfilResult.status === "fulfilled") {
         const perfilResponse = perfilResult.value;
@@ -758,7 +576,7 @@ function App() {
   }
 
   if (screen === "intro") {
-    return <IntroPanel lang={lang} onLangChange={setLang} onStart={completarIntro} />;
+    return <IntroPanel onStart={completarIntro} />;
   }
 
   return (
@@ -773,10 +591,6 @@ function App() {
         onOpenMessages={abrirMensajes}
         onOpenProfile={() => setScreen("profile")}
         onLogout={cerrarSesion}
-        lang={lang}
-        onLangChange={setLang}
-        lang={lang}
-        onLangChange={setLang}
       />
       {notice && <button className="notice" onClick={() => setNotice("")}>{notice}</button>}
 
@@ -816,7 +630,6 @@ function App() {
           onOpenAttendees={() => setScreen("attendees")}
           onCiudad={marcarCiudad}
           authHeaders={authHeaders}
-          lang={lang}
         />
       )}
 
@@ -1077,7 +890,7 @@ function Welcome({ onLogin, onRegister }) {
       <h1>BAILEMOS!</h1>
       <p>Baila. Conecta. Vive el baile.</p>
       <div className="stack">
-        <button className="primary" onClick={onLogin}>Iniciar sesiÃ³n</button>
+        <button className="primary" onClick={onLogin}>Iniciar sesión</button>
         <button className="secondary" onClick={onRegister}>Crear cuenta</button>
       </div>
     </main>
@@ -1103,7 +916,7 @@ function Login({ onBack, onSuccess }) {
       });
       onSuccess(data);
     } catch {
-      alert("Usuario o contraseÃ±a incorrectos.");
+      alert("Usuario o contraseña incorrectos.");
     } finally {
       setBusy(false);
     }
@@ -1164,7 +977,7 @@ function Register({ onBack, onSuccess }) {
           <button type="button" className={rol === "BAILADOR" ? "active" : ""} onClick={() => setRol("BAILADOR")}>Bailador</button>
           <button type="button" className={rol === "PROFESIONAL" ? "active" : ""} onClick={() => setRol("PROFESIONAL")}>Profesional</button>
         </div>
-        <input value={codigoAdmin} onChange={(e) => setCodigoAdmin(e.target.value)} placeholder="CÃ³digo privado admin (solo Jonathan)" type="password" />
+        <input value={codigoAdmin} onChange={(e) => setCodigoAdmin(e.target.value)} placeholder="Código privado admin (solo Jonathan)" type="password" />
         <button className="primary" disabled={busy}>{busy ? "Creando..." : "Crear cuenta"}</button>
       </form>
     </AuthCard>
@@ -1182,7 +995,7 @@ function AuthCard({ title, onBack, children }) {
   );
 }
 
-function WelcomePro({ lang, onLangChange, onLogin, onRegister, onLegal }) {
+function WelcomePro({ onLogin, onRegister, onLegal }) {
   return (
     <main className="welcome">
       <img className="logo hero-logo" src="/bailemos_logo.jpeg" alt="BAILEMOS!" />
@@ -1197,7 +1010,7 @@ function WelcomePro({ lang, onLangChange, onLogin, onRegister, onLegal }) {
   );
 }
 
-function IntroPanel({ lang, onLangChange, onStart }) {
+function IntroPanel({ onStart }) {
   const beneficios = [
     "Encuentra fiestas, salas y eventos por ciudad y fecha.",
     "Organiza tu calendario y guarda tus sitios favoritos.",
@@ -1212,7 +1025,7 @@ function IntroPanel({ lang, onLangChange, onStart }) {
       <img className="logo hero-logo" src="/bailemos_logo.jpeg" alt="BAILEMOS!" />
       <small className="intro-kicker">Tu mundo del baile en una sola app</small>
       <h1>BAILEMOS!</h1>
-      <p>Esta es tu app diseÃ±ada para ayudarte a gestionar todo tu mundo del baile: eventos, salas, amigos, chats, transporte y planes.</p>
+      <p>Esta es tu app diseñada para ayudarte a gestionar todo tu mundo del baile: eventos, salas, amigos, chats, transporte y planes.</p>
       <section className="intro-grid">
         {beneficios.map((texto) => (
           <div key={texto}>
@@ -1220,7 +1033,7 @@ function IntroPanel({ lang, onLangChange, onStart }) {
           </div>
         ))}
       </section>
-      <button className="primary" onClick={onStart}>{t(lang, "start")}</button>
+      <button className="primary" onClick={onStart}>Comenzamos</button>
     </main>
   );
 }
@@ -1393,7 +1206,7 @@ function Header({
     <header className="topbar">
       <button className="profile-header-button" type="button" onClick={onOpenProfile}>
         <img className="header-profile-photo" src={fotoPerfil} alt={nombre} />
-        <span>{t(lang, "profile")}</span>
+        <span>Perfil</span>
       </button>
       <div className="hello-copy" onClick={onOpenProfile} role="button" tabIndex={0}>
         <strong>Hola {nombre}</strong>
@@ -1409,12 +1222,11 @@ function Header({
         {avisosMensajes > 0 && <span className="badge">{avisosMensajes}</span>}
       </button>
       {!notificacionesActivas && notificationPermission !== "unsupported" && (
-        <button className="icon-action" onClick={onEnableNotifications} title={t(lang, "enableNotifications")} aria-label={t(lang, "enableNotifications")}>
+        <button className="icon-action" onClick={onEnableNotifications} title="Activar notificaciones" aria-label="Activar notificaciones">
           N
         </button>
       )}
-      <LanguageToggle lang={lang} onChange={onLangChange} />
-      <button className="ghost" onClick={onLogout}>{t(lang, "logout")}</button>
+      <button className="ghost" onClick={onLogout}>Salir</button>
     </header>
   );
 }
@@ -1450,7 +1262,7 @@ function Home({
   return (
     <section className="screen">
       <div className="accent" />
-      <h2>{t(lang, "todayTitle")}</h2>
+      <h2>Donde se baila hoy</h2>
       <input className="search" placeholder="Buscar eventos, ciudades o salas" />
 
       <div className="quick-grid">
@@ -1462,34 +1274,34 @@ function Home({
           Mensajes
           {avisosMensajes > 0 && <span className="badge">{avisosMensajes}</span>}
         </button>
-        <button onClick={onOpenProfile}>{t(lang, "myProfile")}</button>
+        <button onClick={onOpenProfile}>Mi perfil</button>
         <button onClick={onOpenGeneralChat}>Chat general</button>
-        {esPerfilProfesional && <button onClick={onOpenOrganizer}>{t(lang, "venuePortal")}</button>}
+        {esPerfilProfesional && <button onClick={onOpenOrganizer}>Portal salas</button>}
         <button onClick={onOpenRating}>Valorar</button>
         {esAdmin && <button onClick={onOpenAdmin}>Admin</button>}
       </div>
 
       <article className="card feature-card">
         <small>{event?.ciudadNombre || "BAILEMOS!"}</small>
-        <h3>{loading ? "Cargando eventos..." : event?.titulo || t(lang, "noEvents")}</h3>
+        <h3>{loading ? "Cargando eventos..." : event?.titulo || "No hay eventos publicados"}</h3>
         <p>{event ? `${event.lugarNombre || "Lugar pendiente"} - Van ${event.asistentes || 0} personas` : "Puedes publicar un evento o entrar al chat general."}</p>
         <div className="actions">
           <button className="primary" onClick={onVoy} disabled={!event}>Voy</button>
-          <button className="secondary" onClick={onOpenAttendees} disabled={!event}>QuiÃ©n va</button>
+          <button className="secondary" onClick={onOpenAttendees} disabled={!event}>Quién va</button>
           <button className="secondary" onClick={onOpenChat}>{event ? "Chat evento" : "Chat general"}</button>
         </div>
         <button className="secondary full-button" onClick={onOpenBailaCar}>BailaCar</button>
       </article>
 
       <section className="card">
-        <h3>{t(lang, "playlist")}</h3>
-        <p>{t(lang, "playlistText")}</p>
-        <a className="primary link-button" href={SPOTIFY_BAILEMOS_URL} target="_blank" rel="noreferrer">{t(lang, "spotify")}</a>
+        <h3>Playlist BAILEMOS</h3>
+        <p>Musica para calentar la pista: bachata, salsa y kizomba.</p>
+        <a className="primary link-button" href={SPOTIFY_BAILEMOS_URL} target="_blank" rel="noreferrer">Escuchar en Spotify</a>
       </section>
 
       <section className="card">
-        <h3>{t(lang, "cityNow")}</h3>
-        <p>{ciudadActiva ? `Ahora estÃ¡s en ${ciudadActiva.ciudadNombre}` : "Elige ciudad para ver gente, eventos y chat local."}</p>
+        <h3>Estoy en una ciudad</h3>
+        <p>{ciudadActiva ? `Ahora estás en ${ciudadActiva.ciudadNombre}` : "Elige ciudad para ver gente, eventos y chat local."}</p>
         <div className="chips">
           {ciudades.map((ciudad) => (
             <button key={ciudad.id} onClick={() => {
@@ -1505,7 +1317,7 @@ function Home({
       <section className="card">
         <h3>Eventos disponibles</h3>
         <div className="list">
-          {events.length === 0 && <p className="muted">AÃºn no hay eventos. Publica el primero.</p>}
+          {events.length === 0 && <p className="muted">Aún no hay eventos. Publica el primero.</p>}
           {events.map((item) => (
             <div key={item.id} className="list-row">
               <strong>{item.titulo}</strong>
@@ -1548,8 +1360,7 @@ function HomeView({
   onOpenEventDetail,
   onEditEvent,
   onOpenAttendees,
-  onCiudad,
-  lang
+  onCiudad
 }) {
   const esAdmin = session?.rol === "ADMIN" || session?.rol === "SUPER_ADMIN";
   const esPerfilProfesional = ["PROFESIONAL", "ORGANIZADOR", "ACADEMIA", "SALA", "ADMIN", "SUPER_ADMIN"].includes(session?.rol);
@@ -1604,7 +1415,7 @@ function HomeView({
 
   const etiquetaFechaSeleccionada = fechaSeleccionada
     ? new Date(`${fechaSeleccionada}T12:00:00`).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })
-    : "Todos los dÃ­as";
+    : "Todos los días";
 
   const diasCalendario = useMemo(() => crearDiasMes(mesCalendario), [mesCalendario]);
 
@@ -1680,45 +1491,45 @@ function HomeView({
       <div className="accent" />
       <section className="home-status">
         <div>
-          <small>{t(lang, "bailemosToday")}</small>
+          <small>BAILEMOS hoy</small>
           <strong>{events.length}</strong>
-          <span>{events.length === 1 ? t(lang, "eventAvailable") : t(lang, "eventsAvailable")}</span>
+          <span>{events.length === 1 ? "evento disponible" : "eventos disponibles"}</span>
         </div>
         <div>
-          <small>{t(lang, "messages")}</small>
+          <small>Mensajes</small>
           <strong>{avisosMensajes}</strong>
-          <span>{avisosMensajes === 1 ? t(lang, "pendingNotice") : t(lang, "pendingNotices")}</span>
+          <span>{avisosMensajes === 1 ? "aviso pendiente" : "avisos pendientes"}</span>
         </div>
       </section>
-      <h2>{t(lang, "todayTitle")}</h2>
+      <h2>Donde se baila hoy</h2>
       <form className="search-row" onSubmit={buscarEventos}>
         <label>
-          <span>{t(lang, "cityRoomStyle")}</span>
+          <span>Ciudad, sala o estilo</span>
           <input
             className="search"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder={t(lang, "searchPlaceholder")}
+            placeholder="Ejemplo: Malaga, Atrevete, bachata..."
           />
         </label>
         <label>
-          <span>{t(lang, "date")}</span>
+          <span>Fecha</span>
           <input type="date" value={fechaSeleccionada} onChange={(e) => setFechaSeleccionada(e.target.value)} />
         </label>
-        <button className="primary">{t(lang, "search")}</button>
+        <button className="primary">Buscar</button>
       </form>
       {(ciudadBuscada || ciudadActiva?.ciudadNombre) && (
         <div className="selected-city-pill">
-          {t(lang, "selectedCity")} <strong>{ciudadBuscada || ciudadActiva?.ciudadNombre}</strong>
+          Ciudad seleccionada: <strong>{ciudadBuscada || ciudadActiva?.ciudadNombre}</strong>
         </div>
       )}
 
       <section className="card search-results-card">
-        <h3>{hayBusquedaActiva ? (busquedaActiva ? `${t(lang, "resultsFor")} "${busquedaActiva}"` : t(lang, "dateResults")) : t(lang, "nextDance")}</h3>
-        <p className="muted">{fechaSeleccionada ? `${t(lang, "showingEvents")} ${etiquetaFechaSeleccionada}.` : t(lang, "searchHint")}</p>
+        <h3>{hayBusquedaActiva ? (busquedaActiva ? `Resultados para "${busquedaActiva}"` : "Resultados por fecha") : "Busca tu próximo baile"}</h3>
+        <p className="muted">{fechaSeleccionada ? `Mostrando eventos de ${etiquetaFechaSeleccionada}.` : "Busca por ciudad, sala, estilo o elige una fecha."}</p>
         {hayBusquedaActiva && lugaresFavoritosActivos.length > 0 && (
           <div className="favorite-strip">
-            <strong>{t(lang, "favoritePlaces")}</strong>
+            <strong>Sitios favoritos</strong>
             {lugaresFavoritosActivos.map((favorito) => (
               <button key={favorito.clave} type="button" onClick={() => elegirEvento(favorito.evento)}>
                 {favorito.nombre}
@@ -1727,8 +1538,8 @@ function HomeView({
           </div>
         )}
         <div className="list">
-          {!hayBusquedaActiva && <p className="muted">{t(lang, "emptySearch")}</p>}
-          {hayBusquedaActiva && eventosFiltrados.length === 0 && <p className="muted">{t(lang, "noParties")}</p>}
+          {!hayBusquedaActiva && <p className="muted">Escribe una ciudad, sala o estilo y elige una fecha si quieres afinar la búsqueda.</p>}
+          {hayBusquedaActiva && eventosFiltrados.length === 0 && <p className="muted">No hay fiestas para esa busqueda todavia. Prueba otra fecha, ciudad o sala.</p>}
           {eventosFiltrados.slice(0, 8).map((item) => (
             <div key={item.id} className={`event-result-wrap ${Number(item.id) === Number(event?.id) ? "active" : ""} ${esLugarFavorito(item) ? "favorite" : ""}`}>
               <button className="list-row event-result" onClick={() => elegirEvento(item)}>
@@ -1745,50 +1556,50 @@ function HomeView({
       </section>
 
       <article className="card feature-card">
-        <small>{event ? t(lang, "chosenPlace") : "BAILEMOS!"}</small>
-        <h3>{loading ? "Cargando eventos..." : event ? (event.lugarNombre || event.titulo) : t(lang, "noEvents")}</h3>
+        <small>{event ? "Lugar elegido" : "BAILEMOS!"}</small>
+        <h3>{loading ? "Cargando eventos..." : event ? (event.lugarNombre || event.titulo) : "No hay eventos publicados"}</h3>
         {event && <p className="event-title-line">{event.titulo} - {event.ciudadNombre}</p>}
         {cartelActual ? (
           <img className="event-poster" src={cartelActual} alt={`Cartel de ${event.titulo}`} />
         ) : (
-          <div className="event-poster empty-poster">{t(lang, "posterPending")}</div>
+          <div className="event-poster empty-poster">Cartel pendiente</div>
         )}
         <p>
           {event
             ? `${event.lugarNombre || "Lugar pendiente"} - Van ${event.asistentes || 0} personas`
-            : t(lang, "chooseEvent")}
+            : "Busca y elige un evento para ver sus acciones."}
         </p>
         {event && (
           <button className="favorite-place-button" type="button" onClick={() => alternarLugarFavorito(event)}>
-            {esLugarFavorito(event) ? t(lang, "removeFavorite") : t(lang, "markFavorite")}
+            {esLugarFavorito(event) ? "Quitar de favoritos" : "Marcar sitio favorito"}
           </button>
         )}
-        <button className="primary full-button" onClick={onVoy} disabled={!event}>{t(lang, "going")}</button>
+        <button className="primary full-button" onClick={onVoy} disabled={!event}>Voy</button>
         <div className="actions">
-          <button className="secondary" onClick={onOpenEventDetail} disabled={!event}>{t(lang, "seeMore")}</button>
-          <button className="secondary" onClick={onOpenAttendees} disabled={!event}>{t(lang, "whoGoes")}</button>
-          <button className="secondary" onClick={onOpenChat} disabled={!event}>{t(lang, "eventChat")}</button>
+          <button className="secondary" onClick={onOpenEventDetail} disabled={!event}>Ver mas</button>
+          <button className="secondary" onClick={onOpenAttendees} disabled={!event}>Quien va</button>
+          <button className="secondary" onClick={onOpenChat} disabled={!event}>Chat evento</button>
         </div>
         <button className="secondary full-button" onClick={onOpenBailaCar} disabled={!event}>BailaCar</button>
       </article>
 
       <section className="calendar-filter">
         <div>
-          <small>{t(lang, "eventCalendar")}</small>
+          <small>Calendario de eventos</small>
           <strong>{etiquetaFechaSeleccionada}</strong>
-          <span>{eventosFechaSeleccionada === 1 ? t(lang, "foundEvent") : `${eventosFechaSeleccionada} ${t(lang, "foundEvents")}`}</span>
+          <span>{eventosFechaSeleccionada === 1 ? "1 evento encontrado" : `${eventosFechaSeleccionada} eventos encontrados`}</span>
         </div>
         <div className="calendar-actions">
-          <button type="button" className={fechaSeleccionada === fechaLocalInput(new Date()) ? "active" : ""} onClick={() => aplicarFechaRapida("hoy")}>{t(lang, "today")}</button>
-          <button type="button" className={fechaSeleccionada === fechaLocalInput(sumarDias(new Date(), 1)) ? "active" : ""} onClick={() => aplicarFechaRapida("manana")}>{t(lang, "tomorrow")}</button>
-          <button type="button" className={fechaSeleccionada === fechaLocalInput(siguienteSabado(new Date())) ? "active" : ""} onClick={() => aplicarFechaRapida("finde")}>{t(lang, "saturday")}</button>
-          <button type="button" onClick={() => aplicarFechaRapida("todos")}>{t(lang, "all")}</button>
+          <button type="button" className={fechaSeleccionada === fechaLocalInput(new Date()) ? "active" : ""} onClick={() => aplicarFechaRapida("hoy")}>Hoy</button>
+          <button type="button" className={fechaSeleccionada === fechaLocalInput(sumarDias(new Date(), 1)) ? "active" : ""} onClick={() => aplicarFechaRapida("manana")}>Mañana</button>
+          <button type="button" className={fechaSeleccionada === fechaLocalInput(siguienteSabado(new Date())) ? "active" : ""} onClick={() => aplicarFechaRapida("finde")}>Sábado</button>
+          <button type="button" onClick={() => aplicarFechaRapida("todos")}>Todos</button>
         </div>
         <div className="month-calendar">
           <div className="month-calendar-header">
-            <button type="button" onClick={() => cambiarMes(-1)}>â€¹</button>
+            <button type="button" onClick={() => cambiarMes(-1)}>‹</button>
             <strong>{etiquetaMesCalendario}</strong>
-            <button type="button" onClick={() => cambiarMes(1)}>â€º</button>
+            <button type="button" onClick={() => cambiarMes(1)}>›</button>
           </div>
           <div className="month-weekdays">
             {["L", "M", "X", "J", "V", "S", "D"].map((dia) => <span key={dia}>{dia}</span>)}
@@ -1816,21 +1627,21 @@ function HomeView({
       </section>
 
       <div className="quick-grid">
-        <button className="primary" onClick={onOpenEventDetail} disabled={!event}>{t(lang, "chosenEvent")}</button>
-        <button onClick={onOpenPeople}>{t(lang, "community")}</button>
-        <button onClick={onOpenProfile}>{t(lang, "myProfile")}</button>
-        <button onClick={onOpenOrganizer}>{t(lang, "venuePortal")}</button>
+        <button className="primary" onClick={onOpenEventDetail} disabled={!event}>Evento elegido</button>
+        <button onClick={onOpenPeople}>Comunidad BAILEMOS</button>
+        <button onClick={onOpenProfile}>Mi perfil</button>
+        <button onClick={onOpenOrganizer}>Portal salas</button>
       </div>
 
       <section className="card">
-        <h3>{t(lang, "playlist")}</h3>
-        <p>{t(lang, "playlistText")}</p>
-        <a className="primary link-button" href={SPOTIFY_BAILEMOS_URL} target="_blank" rel="noreferrer">{t(lang, "spotify")}</a>
+        <h3>Playlist BAILEMOS</h3>
+        <p>Musica para calentar la pista: bachata, salsa y kizomba.</p>
+        <a className="primary link-button" href={SPOTIFY_BAILEMOS_URL} target="_blank" rel="noreferrer">Escuchar en Spotify</a>
       </section>
 
       <section className="card">
-        <h3>{t(lang, "cityNow")}</h3>
-        <p>{ciudadActiva ? `${t(lang, "nowIn")} ${ciudadActiva.ciudadNombre}` : t(lang, "cityNowText")}</p>
+        <h3>Estoy en una ciudad</h3>
+        <p>{ciudadActiva ? `Ahora estas en ${ciudadActiva.ciudadNombre}` : "Elige ciudad para ver gente, eventos y chat local."}</p>
         <div className="chips">
           {ciudades.map((ciudad) => (
             <button key={ciudad.id} onClick={() => onCiudad(ciudad)}>{ciudad.nombre}</button>
@@ -1861,7 +1672,7 @@ function CityPanel({ ciudadActiva, authHeaders, onBack, onRate, onMessage }) {
       <p className="muted">Personas conectadas a esta ciudad.</p>
       <div className="card">
         {personas.length === 0 ? (
-          <p>TodavÃ­a no hay personas conectadas.</p>
+          <p>Todavía no hay personas conectadas.</p>
         ) : (
           personas.map((persona) => (
             <div className="list-row with-action" key={persona.usuarioId}>
@@ -1902,11 +1713,11 @@ function AttendeesPanel({ event, authHeaders, onBack, onOpenProfile }) {
   return (
     <section className="screen">
       <button className="back" onClick={onBack}>Volver</button>
-      <h3>QuiÃ©n va</h3>
+      <h3>Quién va</h3>
       <p className="muted">{event.titulo}</p>
       <div className="card">
       {asistentes.length === 0 ? (
-        <p className="muted">AÃºn no hay asistentes confirmados.</p>
+        <p className="muted">Aún no hay asistentes confirmados.</p>
       ) : (
         asistentes.map((persona) => (
           <button className="list-row person-link full-width" key={persona.usuarioId} onClick={() => onOpenProfile(persona)}>
@@ -1924,7 +1735,7 @@ function EventDetailPanel({ event, onBack, onInteresado, onVoy, onNoVoy, onOpenA
   const cartel = event?.cartelData || event?.cartelUrl || "";
   const fechaInicio = event?.fechaInicio ? new Date(event.fechaInicio).toLocaleString("es-ES") : "Fecha pendiente";
   const fechaFin = event?.fechaFin ? new Date(event.fechaFin).toLocaleString("es-ES") : "Sin hora de fin";
-  const precio = event?.precio === null || event?.precio === undefined ? "Precio no indicado" : `${event.precio} â‚¬`;
+  const precio = event?.precio === null || event?.precio === undefined ? "Precio no indicado" : `${event.precio} €`;
 
   return (
     <section className="screen">
@@ -1936,7 +1747,7 @@ function EventDetailPanel({ event, onBack, onInteresado, onVoy, onNoVoy, onOpenA
         {cartel ? (
           <img className="event-poster" src={cartel} alt={`Cartel de ${event.titulo}`} />
         ) : (
-          <div className="event-poster empty-poster">{t(lang, "posterPending")}</div>
+          <div className="event-poster empty-poster">Cartel pendiente</div>
         )}
         <div className="detail-grid">
           <div>
@@ -2017,8 +1828,8 @@ function EventDetailPanel({ event, onBack, onInteresado, onVoy, onNoVoy, onOpenA
           <button className="secondary" onClick={onNoVoy}>No voy</button>
         </div>
         <div className="actions">
-          <button className="secondary" onClick={onOpenAttendees}>{t(lang, "whoGoes")}</button>
-          <button className="secondary" onClick={onOpenChat}>{t(lang, "eventChat")}</button>
+          <button className="secondary" onClick={onOpenAttendees}>Quien va</button>
+          <button className="secondary" onClick={onOpenChat}>Chat evento</button>
           <button className="secondary" onClick={onOpenBailaCar}>BailaCar</button>
         </div>
       </article>
@@ -2072,7 +1883,7 @@ function AdminPanel({ authHeaders, session, onBack }) {
   }
 
   async function accionAdmin(path, method, mensajeError) {
-    const response = await fetchJsonRapido(`${API_URL}${path}`, { method, headers: authHeaders });
+    const response = await fetch(`${API_URL}${path}`, { method, headers: authHeaders });
     if (!response.ok) {
       alert(mensajeError);
       return;
@@ -2100,14 +1911,14 @@ function AdminPanel({ authHeaders, session, onBack }) {
     <section className="screen">
       <button className="back" onClick={onBack}>Volver</button>
       <h2>Panel Admin</h2>
-      <p className="muted">GestiÃ³n interna de BAILEMOS.</p>
+      <p className="muted">Gestión interna de BAILEMOS.</p>
 
       {esSuperAdmin && (
         <form className="card stack" onSubmit={crearAdmin}>
           <h3>Crear administrador restringido</h3>
           <input value={form.nombre} onChange={(e) => setField("nombre", e.target.value)} placeholder="Nombre" required />
           <input value={form.email} onChange={(e) => setField("email", e.target.value)} placeholder="Email" type="email" required />
-          <input value={form.password} onChange={(e) => setField("password", e.target.value)} placeholder="ContraseÃ±a" type="password" required />
+          <input value={form.password} onChange={(e) => setField("password", e.target.value)} placeholder="Contraseña" type="password" required />
           <select value={form.rol} onChange={(e) => setField("rol", e.target.value)}>
             <option value="ADMIN">Admin</option>
             <option value="ORGANIZADOR">Organizador</option>
@@ -2292,7 +2103,7 @@ function PeoplePanel({ authHeaders, onBack, onOpenProfile, onMessage, onRate }) 
       <input className="search" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar por nombre, ciudad o rol" />
       <section className="card">
         {filtradas.length === 0 ? (
-          <p className="muted">TodavÃ­a no hay otros usuarios registrados.</p>
+          <p className="muted">Todavía no hay otros usuarios registrados.</p>
         ) : (
           filtradas.map((persona) => (
             <div className="list-row with-action" key={persona.usuarioId}>
@@ -2357,11 +2168,11 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage, onOp
 
   async function accionSocial(path, method) {
     if (!user?.usuarioId || Number.isNaN(Number(user.usuarioId))) {
-      alert("Abre un perfil vÃ¡lido para completar esta acciÃ³n.");
+      alert("Abre un perfil válido para completar esta acción.");
       return;
     }
 
-    const response = await fetchJsonRapido(`${API_URL}${path}`, {
+    const response = await fetch(`${API_URL}${path}`, {
       method,
       headers: { "Content-Type": "application/json", ...authHeaders }
     });
@@ -2415,7 +2226,7 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage, onOp
     });
 
     if (!response.ok) {
-      alert("No se pudo guardar la valoraciÃ³n.");
+      alert("No se pudo guardar la valoración.");
       return;
     }
 
@@ -2435,7 +2246,7 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage, onOp
     });
 
     if (!response.ok) {
-      alert("No se pudo guardar la recomendaciÃ³n.");
+      alert("No se pudo guardar la recomendación.");
       return;
     }
 
@@ -2507,7 +2318,7 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage, onOp
           <option value="1">1 - Mala experiencia</option>
         </select>
         <textarea value={comentarioValoracion} onChange={(event) => setComentarioValoracion(event.target.value)} placeholder="Cuenta como fue bailar o trabajar con esta persona" />
-        <button className="primary">Guardar valoraciÃ³n</button>
+        <button className="primary">Guardar valoración</button>
       </form>
 
       <form className="card stack" onSubmit={guardarRecomendacion}>
@@ -2517,12 +2328,12 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage, onOp
           <option value="">Sin evento concreto</option>
           {events.map((evento) => <option key={evento.id} value={evento.id}>{evento.titulo}</option>)}
         </select>
-        <button className="primary">Guardar recomendaciÃ³n</button>
+        <button className="primary">Guardar recomendación</button>
       </form>
 
       <section className="card">
         <h3>Valoraciones visibles</h3>
-        {valoraciones.length === 0 ? <p className="muted">AÃºn no hay valoraciones.</p> : valoraciones.map((item) => (
+        {valoraciones.length === 0 ? <p className="muted">Aún no hay valoraciones.</p> : valoraciones.map((item) => (
           <div className="list-row" key={item.id}>
             <strong>{item.puntuacion}/5 - {item.autorNombre}</strong>
             <span>{item.comentario || "Sin comentario"}</span>
@@ -2532,7 +2343,7 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage, onOp
 
       <section className="card">
         <h3>Recomendaciones visibles</h3>
-        {recomendaciones.length === 0 ? <p className="muted">AÃºn no hay recomendaciones.</p> : recomendaciones.map((item) => {
+        {recomendaciones.length === 0 ? <p className="muted">Aún no hay recomendaciones.</p> : recomendaciones.map((item) => {
           const evento = events.find((event) => Number(event.id) === Number(item.eventoId));
           return (
             <div className="list-row" key={item.id}>
@@ -2569,7 +2380,7 @@ function FriendsPanel({ authHeaders, onBack, onOpenProfile, onMessage }) {
   }, []);
 
   async function accion(usuarioId, path, method, mensajeOk) {
-    const response = await fetchJsonRapido(`${API_URL}${path}`, {
+    const response = await fetch(`${API_URL}${path}`, {
       method,
       headers: { "Content-Type": "application/json", ...authHeaders }
     });
@@ -2676,7 +2487,7 @@ function MessagesPanel({ authHeaders, onBack, onOpen, onUpdated }) {
     }
 
     await cargar();
-    alert(accion === "aceptar" ? "Solicitud aceptada. Ya sois amigos y podÃ©is chatear." : "Solicitud rechazada.");
+    alert(accion === "aceptar" ? "Solicitud aceptada. Ya sois amigos y podéis chatear." : "Solicitud rechazada.");
   }
 
   return (
@@ -2716,7 +2527,7 @@ function MessagesPanel({ authHeaders, onBack, onOpen, onUpdated }) {
       <section className="card">
         <h3>Conversaciones privadas</h3>
         {chats.length === 0 ? (
-          <p className="muted">AÃºn no tienes conversaciones. Entra en Gente y escribe a alguien.</p>
+          <p className="muted">Aún no tienes conversaciones. Entra en Gente y escribe a alguien.</p>
         ) : (
           chats.map((chat) => (
             <button className="conversation-row" key={`${chat.chatId || "amigo"}-${chat.otroUsuarioId}`} onClick={() => onOpen(chat)}>
@@ -2924,8 +2735,8 @@ function ProfilePanel({
 
       <form className="card stack" onSubmit={guardar}>
         {(form.fotoData || form.fotoUrl) && <img className="profile-preview" src={form.fotoData || form.fotoUrl} alt="Foto de perfil" />}
-        <input value={form.nombreArtistico} onChange={(e) => setField("nombreArtistico", e.target.value)} placeholder="Nombre artÃ­stico" />
-        <textarea value={form.biografia} onChange={(e) => setField("biografia", e.target.value)} placeholder="BiografÃ­a" />
+        <input value={form.nombreArtistico} onChange={(e) => setField("nombreArtistico", e.target.value)} placeholder="Nombre artístico" />
+        <textarea value={form.biografia} onChange={(e) => setField("biografia", e.target.value)} placeholder="Biografía" />
         <select value={form.ciudadId} onChange={(e) => setField("ciudadId", e.target.value)}>
           <option value="">Ciudad principal</option>
           {ciudades.map((ciudad) => <option key={ciudad.id} value={ciudad.id}>{ciudad.nombre}</option>)}
@@ -3043,7 +2854,7 @@ function ChatPanel({ title, endpointGet, endpointPost, authHeaders, onBack, embe
         {blocked ? (
           <p className="muted">No se puede contactar porque hay un bloqueo activo.</p>
         ) : mensajes.length === 0 ? (
-          <p className="muted">TodavÃ­a no hay mensajes. Escribe el primero.</p>
+          <p className="muted">Todavía no hay mensajes. Escribe el primero.</p>
         ) : (
           mensajes.map((item) => (
             <div className="message" key={item.id}>
@@ -3124,7 +2935,7 @@ function BailaCar({ onBack, event, authHeaders }) {
 
       <section className="card">
         <h3>Viajes publicados</h3>
-        {viajes.length === 0 ? <p className="muted">AÃºn no hay viajes publicados.</p> : viajes.map((viaje) => (
+        {viajes.length === 0 ? <p className="muted">Aún no hay viajes publicados.</p> : viajes.map((viaje) => (
           <div className="list-row" key={viaje.id}>
             <strong>{viaje.tipo === "OFREZCO_PLAZAS" ? "Ofrece plazas" : "Busca coche"} - {viaje.nombreUsuario}</strong>
             <span>{viaje.ciudadSalida} - {viaje.horaSalida} - Plazas: {viaje.plazas || "Pendiente"}</span>
@@ -3193,7 +3004,7 @@ function PublishEvent({ ciudades, authHeaders, onBack, onCreated, editingEvent =
       .filter(Boolean);
     const primeraLinea = lineas[0] || "";
     const url = textoImportado.match(/https?:\/\/\S+/i)?.[0] || "";
-    const precio = textoImportado.match(/(\d+([,.]\d{1,2})?)\s*(â‚¬|eur|euros)/i)?.[1]?.replace(",", ".") || "";
+    const precio = textoImportado.match(/(\d+([,.]\d{1,2})?)\s*(€|eur|euros)/i)?.[1]?.replace(",", ".") || "";
 
     setForm((current) => ({
       ...current,
@@ -3285,7 +3096,7 @@ function PublishEvent({ ciudades, authHeaders, onBack, onCreated, editingEvent =
       <section className="card stack">
         <h3>Importar desde WhatsApp</h3>
         <p className="muted">Pega una programacion completa. BAILEMOS detecta fechas, salas y municipios para crear los eventos automaticamente.</p>
-        <textarea value={textoImportado} onChange={(event) => setTextoImportado(event.target.value)} placeholder="Pega texto del evento. Si pone Bachata, Salsa o Kizomba, BAILEMOS los marcarÃ¡ automÃ¡ticamente." />
+        <textarea value={textoImportado} onChange={(event) => setTextoImportado(event.target.value)} placeholder="Pega texto del evento. Si pone Bachata, Salsa o Kizomba, BAILEMOS los marcará automáticamente." />
         <button className="secondary" type="button" onClick={prepararDesdeTexto}>Rellenar con este texto</button>
         <button className="secondary" type="button" onClick={detectarProgramacionMasiva}>Detectar programacion completa</button>
         {eventosDetectados.length > 0 && (
@@ -3324,7 +3135,7 @@ function PublishEvent({ ciudades, authHeaders, onBack, onCreated, editingEvent =
         </select>
         <input value={form.djNombre} onChange={(e) => setField("djNombre", e.target.value)} placeholder="DJ invitado o DJ residente" />
         <input value={form.profesorNombre} onChange={(e) => setField("profesorNombre", e.target.value)} placeholder="Profesor, clase o artista invitado" />
-        <input value={form.direccion} onChange={(e) => setField("direccion", e.target.value)} placeholder="DirecciÃ³n" />
+        <input value={form.direccion} onChange={(e) => setField("direccion", e.target.value)} placeholder="Dirección" />
         <label className="field-label">
           <span>Fecha y hora de inicio del evento</span>
           <input value={form.fechaInicio} onChange={(e) => setField("fechaInicio", e.target.value)} type="datetime-local" required />
@@ -3345,7 +3156,7 @@ function PublishEvent({ ciudades, authHeaders, onBack, onCreated, editingEvent =
         {(form.cartelData || form.cartelUrl) && (
           <img className="event-poster" src={form.cartelData || form.cartelUrl} alt="Vista previa del cartel" />
         )}
-        <textarea value={form.descripcion} onChange={(e) => setField("descripcion", e.target.value)} placeholder="DescripciÃ³n" />
+        <textarea value={form.descripcion} onChange={(e) => setField("descripcion", e.target.value)} placeholder="Descripción" />
         <div className="chips">
           {estilosEvento.map((estilo) => (
             <button type="button" key={estilo} className={form.estilos.includes(estilo) ? "chip-active" : ""} onClick={() => toggleEstilo(estilo)}>{estilo}</button>
@@ -3414,7 +3225,7 @@ function OrganizerPortal({ ciudades, authHeaders, onBack, onCreated }) {
       .filter(Boolean);
     const primeraLinea = lineas[0] || "";
     const url = texto.match(/https?:\/\/\S+/i)?.[0] || "";
-    const precio = texto.match(/(\d+([,.]\d{1,2})?)\s*(â‚¬|eur|euros)/i)?.[1]?.replace(",", ".") || "";
+    const precio = texto.match(/(\d+([,.]\d{1,2})?)\s*(€|eur|euros)/i)?.[1]?.replace(",", ".") || "";
 
     setForm((current) => ({
       ...current,
@@ -3503,11 +3314,11 @@ function OrganizerPortal({ ciudades, authHeaders, onBack, onCreated }) {
     <section className="screen">
       <button className="back" onClick={onBack}>Volver</button>
       <h2>Portal de salas y organizadores</h2>
-      <p className="muted">Publica eventos reales o pega texto/enlace de una publicaciÃ³n para prepararlo mÃ¡s rÃ¡pido.</p>
+      <p className="muted">Publica eventos reales o pega texto/enlace de una publicación para prepararlo más rápido.</p>
 
       <section className="card stack">
-        <h3>Importar desde publicaciÃ³n</h3>
-        <textarea value={texto} onChange={(event) => setTexto(event.target.value)} placeholder="Pega aquÃ­ texto de Instagram, web, cartel o descripciÃ³n del evento" />
+        <h3>Importar desde publicación</h3>
+        <textarea value={texto} onChange={(event) => setTexto(event.target.value)} placeholder="Pega aquí texto de Instagram, web, cartel o descripción del evento" />
         <button className="secondary" type="button" onClick={prepararDesdeTexto}>Preparar evento con este texto</button>
         <button className="secondary" type="button" onClick={detectarProgramacionMasiva}>Detectar programacion completa</button>
         {eventosDetectados.length > 0 && (
@@ -3548,7 +3359,7 @@ function OrganizerPortal({ ciudades, authHeaders, onBack, onCreated }) {
         </select>
         <input value={form.djNombre} onChange={(event) => setField("djNombre", event.target.value)} placeholder="DJ invitado o DJ residente" />
         <input value={form.profesorNombre} onChange={(event) => setField("profesorNombre", event.target.value)} placeholder="Profesor, clase o artista invitado" />
-        <input value={form.direccion} onChange={(event) => setField("direccion", event.target.value)} placeholder="DirecciÃ³n" />
+        <input value={form.direccion} onChange={(event) => setField("direccion", event.target.value)} placeholder="Dirección" />
         <label className="field-label">
           <span>Fecha y hora de inicio del evento</span>
           <input value={form.fechaInicio} onChange={(event) => setField("fechaInicio", event.target.value)} type="datetime-local" required />
@@ -3569,7 +3380,7 @@ function OrganizerPortal({ ciudades, authHeaders, onBack, onCreated }) {
         {(form.cartelData || form.cartelUrl) && (
           <img className="event-poster" src={form.cartelData || form.cartelUrl} alt="Vista previa del cartel" />
         )}
-        <textarea value={form.descripcion} onChange={(event) => setField("descripcion", event.target.value)} placeholder="DescripciÃ³n completa" />
+        <textarea value={form.descripcion} onChange={(event) => setField("descripcion", event.target.value)} placeholder="Descripción completa" />
         <div className="chips">
           {estilosEvento.map((estilo) => (
             <button type="button" key={estilo} className={form.estilos.includes(estilo) ? "chip-active" : ""} onClick={() => toggleEstilo(estilo)}>{estilo}</button>
@@ -3592,7 +3403,7 @@ function MagicPanel({ events, ciudades, ciudadActiva, onBack }) {
     <section className="screen">
       <button className="back" onClick={onBack}>Volver</button>
       <h2>Haz tu magia</h2>
-      <p className="muted">BAILEMOS te propone un plan rÃ¡pido segÃºn ciudad y estilo.</p>
+      <p className="muted">BAILEMOS te propone un plan rápido según ciudad y estilo.</p>
       <div className="card stack">
         <select value={ciudadId} onChange={(e) => setCiudadId(e.target.value)}>
           {ciudades.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
@@ -3604,7 +3415,7 @@ function MagicPanel({ events, ciudades, ciudadActiva, onBack }) {
       <article className="card feature-card">
         <small>{ciudad?.nombre || "BAILEMOS"}</small>
         <h3>{elegido ? elegido.titulo : "Publica el primer evento de esta ciudad"}</h3>
-        <p>{elegido ? `${elegido.lugarNombre || "Lugar pendiente"} - ${elegido.fechaInicio || ""}` : "Cuando haya eventos, aquÃ­ aparecerÃ¡ una recomendaciÃ³n automÃ¡tica."}</p>
+        <p>{elegido ? `${elegido.lugarNombre || "Lugar pendiente"} - ${elegido.fechaInicio || ""}` : "Cuando haya eventos, aquí aparecerá una recomendación automática."}</p>
       </article>
     </section>
   );
@@ -3644,7 +3455,7 @@ function RatingPanel({ session, authHeaders, defaultUserId, onBack }) {
     });
 
     if (!response.ok) {
-      alert("No se pudo guardar la valoraciÃ³n.");
+      alert("No se pudo guardar la valoración.");
       return;
     }
 
@@ -3666,11 +3477,11 @@ function RatingPanel({ session, authHeaders, defaultUserId, onBack }) {
           <option value="1">1 - Mala experiencia</option>
         </select>
         <textarea value={comentario} onChange={(e) => setComentario(e.target.value)} placeholder="Cuenta como fue bailar o trabajar con esta persona" />
-        <button className="primary">Guardar valoraciÃ³n</button>
+        <button className="primary">Guardar valoración</button>
       </form>
       <section className="card">
         <h3>Valoraciones recibidas</h3>
-        {valoraciones.length === 0 ? <p className="muted">AÃºn no hay valoraciones.</p> : valoraciones.map((item) => (
+        {valoraciones.length === 0 ? <p className="muted">Aún no hay valoraciones.</p> : valoraciones.map((item) => (
           <div className="list-row" key={item.id}>
             <strong>{item.puntuacion}/5 - {item.autorNombre}</strong>
             <span>{item.comentario || "Sin comentario"}</span>

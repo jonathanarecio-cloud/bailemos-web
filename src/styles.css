@@ -1120,34 +1120,3 @@ h3 {
     grid-template-columns: 1fr;
   }
 }
-
-.language-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  width: fit-content;
-  margin: 0 auto 12px;
-  padding: 4px;
-  border: 1px solid rgba(255, 117, 66, 0.4);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.055);
-}
-
-.topbar .language-toggle {
-  margin: 0;
-}
-
-.language-toggle button {
-  min-width: 38px;
-  min-height: 32px;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 900;
-}
-
-.language-toggle button.active {
-  background: linear-gradient(135deg, var(--hot), var(--accent));
-  color: #ffffff;
-}
