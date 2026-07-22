@@ -718,6 +718,10 @@ function App() {
             setSelectedUser({ usuarioId: persona.usuarioId, nombre: persona.nombre, rol: persona.rol });
             setScreen("public-profile");
           }}
+          onMessage={(persona) => {
+            setSelectedUser({ usuarioId: persona.usuarioId, nombre: persona.nombre, rol: persona.rol });
+            setScreen("private-chat");
+          }}
         />
       )}
 
@@ -1766,7 +1770,7 @@ function CityPanel({ ciudadActiva, authHeaders, onBack, onRate, onMessage }) {
   );
 }
 
-function AttendeesPanel({ event, authHeaders, onBack, onOpenProfile }) {
+function AttendeesPanel({ event, authHeaders, onBack, onOpenProfile, onMessage }) {
   const [asistentes, setAsistentes] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -1791,10 +1795,16 @@ function AttendeesPanel({ event, authHeaders, onBack, onOpenProfile }) {
         <p className="muted">Aún no hay asistentes confirmados.</p>
       ) : (
         asistentes.map((persona) => (
-          <button className="list-row person-link full-width" key={persona.usuarioId} onClick={() => onOpenProfile(persona)}>
-            <strong>{persona.nombre} {persona.amigoMio && <span className="friend-badge">Amigo</span>}</strong>
-            <span>{persona.rol}</span>
-          </button>
+          <div className="list-row with-action" key={persona.usuarioId}>
+            <span>
+              <strong>{persona.nombre} {persona.amigoMio && <span className="friend-badge">Amigo</span>}</strong>
+              <small>{persona.rol}</small>
+            </span>
+            <div className="mini-actions">
+              <button className="primary compact" onClick={() => onMessage(persona)}>Chatear</button>
+              <button className="secondary compact" onClick={() => onOpenProfile(persona)}>Ver perfil</button>
+            </div>
+          </div>
         ))
       )}
       </div>
