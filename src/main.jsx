@@ -2836,11 +2836,14 @@ function ChatPanel({ title, endpointGet, endpointPost, authHeaders, onBack, embe
   const [mensajes, setMensajes] = useState([]);
   const [mensaje, setMensaje] = useState("");
   const [blocked, setBlocked] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [sending, setSending] = useState(false);
 
   async function cargar() {
     if (!endpointGet) return;
+    setLoading(true);
     try {
-      const response = await fetch(`${API_URL}${endpointGet}`, { headers: authHeaders });
+      const response = await fetchConTimeout(`${API_URL}${endpointGet}`, { headers: authHeaders }, 6000);
       if (response.status === 403) {
         setBlocked(true);
         setMensajes([]);
@@ -2851,6 +2854,8 @@ function ChatPanel({ title, endpointGet, endpointPost, authHeaders, onBack, embe
       setMensajes(await response.json());
     } catch {
       setMensajes([]);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -2862,31 +2867,43 @@ function ChatPanel({ title, endpointGet, endpointPost, authHeaders, onBack, embe
     event.preventDefault();
     if (!mensaje.trim() || !endpointPost) return;
 
-    const response = await fetch(`${API_URL}${endpointPost}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeaders },
-      body: JSON.stringify({ mensaje: mensaje.trim() })
-    });
+    setSending(true);
+    let response;
+    try {
+      response = await fetchConTimeout(`${API_URL}${endpointPost}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify({ mensaje: mensaje.trim() })
+      }, 8000);
+    } catch {
+      alert("No se pudo enviar el mensaje. Revisa la conexion e intentalo de nuevo.");
+      setSending(false);
+      return;
+    }
 
     if (response.status === 403) {
       setBlocked(true);
       alert("No se puede enviar el mensaje porque hay un bloqueo activo.");
+      setSending(false);
       return;
     }
 
     if (!response.ok) {
       alert("No se pudo enviar el mensaje.");
+      setSending(false);
       return;
     }
 
     setMensaje("");
-    cargar();
+    await cargar();
+    setSending(false);
   }
 
   return (
     <section className={embedded ? "chat-embedded" : "screen"}>
       {!embedded && <button className="back" onClick={onBack}>Volver</button>}
       <h2>{title}</h2>
+      {loading && <p className="notice-text">Actualizando chat...</p>}
       <div className="chat-box">
         {blocked ? (
           <p className="muted">No se puede contactar porque hay un bloqueo activo.</p>
@@ -2902,8 +2919,8 @@ function ChatPanel({ title, endpointGet, endpointPost, authHeaders, onBack, embe
         )}
       </div>
       <form className="composer" onSubmit={enviar}>
-        <input value={mensaje} onChange={(e) => setMensaje(e.target.value)} placeholder="Escribe un mensaje" disabled={blocked} />
-        <button className="primary" disabled={blocked}>Enviar</button>
+        <input value={mensaje} onChange={(e) => setMensaje(e.target.value)} placeholder="Escribe un mensaje" disabled={blocked || sending} />
+        <button className="primary" disabled={blocked || sending}>{sending ? "Enviando..." : "Enviar"}</button>
       </form>
     </section>
   );
