@@ -2933,15 +2933,20 @@ function BailaCar({ onBack, event, authHeaders }) {
   const [plazas, setPlazas] = useState("");
   const [comentario, setComentario] = useState("");
   const [viajes, setViajes] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [publishing, setPublishing] = useState(false);
 
   async function cargarViajes() {
     const query = event?.id ? `?eventoId=${event.id}` : "";
+    setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/bailacar${query}`, { headers: authHeaders });
+      const response = await fetchConTimeout(`${API_URL}/bailacar${query}`, { headers: authHeaders }, 6000);
       if (!response.ok) throw new Error();
       setViajes(await response.json());
     } catch {
       setViajes([]);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -2951,18 +2956,31 @@ function BailaCar({ onBack, event, authHeaders }) {
 
   async function publicar(eventSubmit) {
     eventSubmit.preventDefault();
-    await fetch(`${API_URL}/bailacar`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeaders },
-      body: JSON.stringify({
-        eventoId: event?.id || null,
-        tipo,
-        ciudadSalida: salida,
-        horaSalida: hora,
-        plazas: plazas ? Number(plazas) : null,
-        comentario
-      })
-    });
+    setPublishing(true);
+    try {
+      const response = await fetchConTimeout(`${API_URL}/bailacar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify({
+          eventoId: event?.id || null,
+          tipo,
+          ciudadSalida: salida,
+          horaSalida: hora,
+          plazas: plazas ? Number(plazas) : null,
+          comentario
+        })
+      }, 8000);
+
+      if (!response.ok) {
+        alert("No se pudo publicar en BailaCar.");
+        return;
+      }
+    } catch {
+      alert("No se pudo publicar en BailaCar. Revisa la conexion e intentalo de nuevo.");
+      return;
+    } finally {
+      setPublishing(false);
+    }
     setSalida("");
     setHora("");
     setPlazas("");
@@ -2984,11 +3002,12 @@ function BailaCar({ onBack, event, authHeaders }) {
         <input value={hora} onChange={(e) => setHora(e.target.value)} placeholder="Hora aproximada" required />
         <input value={plazas} onChange={(e) => setPlazas(e.target.value)} placeholder="Plazas disponibles" inputMode="numeric" />
         <textarea value={comentario} onChange={(e) => setComentario(e.target.value)} placeholder="Comentario, ruta o condiciones" />
-        <button className="primary">Publicar en BailaCar</button>
+        <button className="primary" disabled={publishing}>{publishing ? "Publicando..." : "Publicar en BailaCar"}</button>
       </form>
 
       <section className="card">
         <h3>Viajes publicados</h3>
+        {loading && <p className="notice-text">Actualizando viajes...</p>}
         {viajes.length === 0 ? <p className="muted">Aún no hay viajes publicados.</p> : viajes.map((viaje) => (
           <div className="list-row" key={viaje.id}>
             <strong>{viaje.tipo === "OFREZCO_PLAZAS" ? "Ofrece plazas" : "Busca coche"} - {viaje.nombreUsuario}</strong>
