@@ -79,6 +79,27 @@ function leerArchivoComoDataUrl(file) {
   });
 }
 
+function cargarImagen(url) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = url;
+  });
+}
+
+async function comprimirImagenComoDataUrl(file, maxSize = 1600, quality = 0.82) {
+  const original = await leerArchivoComoDataUrl(file);
+  const image = await cargarImagen(original);
+  const escala = Math.min(1, maxSize / Math.max(image.width, image.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(image.width * escala));
+  canvas.height = Math.max(1, Math.round(image.height * escala));
+  const context = canvas.getContext("2d");
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/jpeg", quality);
+}
+
 function detectarEstilosEvento(texto) {
   const contenido = (texto || "").toUpperCase();
   const detectados = estilosEvento.filter((estilo) => contenido.includes(estilo));
@@ -2682,17 +2703,17 @@ function ProfilePanel({
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (!["image/jpeg", "image/png"].includes(file.type)) {
-      alert("La foto debe ser JPG o PNG.");
+    if (!file.type.startsWith("image/")) {
+      alert("La foto debe ser una imagen.");
       return;
     }
 
-    if (file.size > MAX_FOTO_MB * 1024 * 1024) {
-      alert(`La foto es demasiado grande. Usa una imagen de menos de ${MAX_FOTO_MB} MB.`);
+    try {
+      setField("fotoData", await comprimirImagenComoDataUrl(file, 1200, 0.82));
+    } catch {
+      alert("No se pudo preparar la foto. Prueba con otra imagen.");
       return;
     }
-
-    setField("fotoData", await leerArchivoComoDataUrl(file));
   }
 
   async function cargarVideoArchivo(event) {
@@ -3076,7 +3097,11 @@ function PublishEvent({ ciudades, authHeaders, onBack, onCreated, editingEvent =
       return;
     }
 
-    setField("cartelData", await leerArchivoComoDataUrl(file));
+    try {
+      setField("cartelData", await comprimirImagenComoDataUrl(file, 1600, 0.84));
+    } catch {
+      alert("No se pudo preparar el cartel. Prueba con otra imagen.");
+    }
   }
 
   function prepararDesdeTexto() {
@@ -3308,7 +3333,11 @@ function OrganizerPortal({ ciudades, authHeaders, onBack, onCreated }) {
       return;
     }
 
-    setField("cartelData", await leerArchivoComoDataUrl(file));
+    try {
+      setField("cartelData", await comprimirImagenComoDataUrl(file, 1600, 0.84));
+    } catch {
+      alert("No se pudo preparar el cartel. Prueba con otra imagen.");
+    }
   }
 
   function prepararDesdeTexto() {
