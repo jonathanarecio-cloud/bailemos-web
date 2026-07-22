@@ -1789,6 +1789,10 @@ function AttendeesPanel({ event, authHeaders, onBack, onOpenProfile, onMessage }
       <button className="back" onClick={onBack}>Volver</button>
       <h3>Quién va</h3>
       <p className="muted">{event.titulo}</p>
+      <section className="card friend-summary">
+        <strong>{asistentes.length}</strong>
+        <span>{asistentes.length === 1 ? "persona confirmada" : "personas confirmadas"}</span>
+      </section>
       <div className="card">
       {loading && <p className="notice-text">Actualizando asistentes...</p>}
       {asistentes.length === 0 ? (
