@@ -1687,13 +1687,16 @@ function HomeView({
 function CityPanel({ ciudadActiva, authHeaders, onBack, onRate, onMessage }) {
   const ciudadId = ciudadActiva?.ciudadId;
   const [personas, setPersonas] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!ciudadId) return;
-    fetch(`${API_URL}/usuarios/ciudad/${ciudadId}`, { headers: authHeaders })
-      .then((response) => response.json())
+    setLoading(true);
+    fetchConTimeout(`${API_URL}/usuarios/ciudad/${ciudadId}`, { headers: authHeaders }, 6000)
+      .then((response) => response.ok ? response.json() : [])
       .then(setPersonas)
-      .catch(() => setPersonas([]));
+      .catch(() => setPersonas([]))
+      .finally(() => setLoading(false));
   }, [ciudadId]);
 
   return (
@@ -1702,6 +1705,7 @@ function CityPanel({ ciudadActiva, authHeaders, onBack, onRate, onMessage }) {
       <h2>{ciudadActiva?.ciudadNombre || "Ciudad"}</h2>
       <p className="muted">Personas conectadas a esta ciudad.</p>
       <div className="card">
+        {loading && <p className="notice-text">Actualizando ciudad...</p>}
         {personas.length === 0 ? (
           <p>Todavía no hay personas conectadas.</p>
         ) : (
@@ -1732,13 +1736,16 @@ function CityPanel({ ciudadActiva, authHeaders, onBack, onRate, onMessage }) {
 
 function AttendeesPanel({ event, authHeaders, onBack, onOpenProfile }) {
   const [asistentes, setAsistentes] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!event?.id) return;
-    fetch(`${API_URL}/eventos/${event.id}/asistentes`, { headers: authHeaders })
+    setLoading(true);
+    fetchConTimeout(`${API_URL}/eventos/${event.id}/asistentes`, { headers: authHeaders }, 6000)
       .then((response) => response.ok ? response.json() : [])
       .then(setAsistentes)
-      .catch(() => setAsistentes([]));
+      .catch(() => setAsistentes([]))
+      .finally(() => setLoading(false));
   }, [event?.id]);
 
   return (
@@ -1747,6 +1754,7 @@ function AttendeesPanel({ event, authHeaders, onBack, onOpenProfile }) {
       <h3>Quién va</h3>
       <p className="muted">{event.titulo}</p>
       <div className="card">
+      {loading && <p className="notice-text">Actualizando asistentes...</p>}
       {asistentes.length === 0 ? (
         <p className="muted">Aún no hay asistentes confirmados.</p>
       ) : (
