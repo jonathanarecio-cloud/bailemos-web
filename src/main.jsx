@@ -1800,7 +1800,7 @@ function EventDetailPanel({ event, onBack, onInteresado, onVoy, onNoVoy, onOpenA
   return (
     <section className="screen">
       <button className="back" onClick={onBack}>Volver</button>
-      <h2>Informacion del evento</h2>
+      <h2>Información del evento</h2>
       <article className="card feature-card">
         <small>{event.ciudadNombre}</small>
         <h3>{event.titulo}</h3>
@@ -1819,8 +1819,8 @@ function EventDetailPanel({ event, onBack, onInteresado, onVoy, onNoVoy, onOpenA
             <span>{event.ciudadNombre}</span>
           </div>
           <div>
-            <strong>Direccion</strong>
-            <span>{event.direccion || "Direccion pendiente"}</span>
+            <strong>Dirección</strong>
+            <span>{event.direccion || "Dirección pendiente"}</span>
           </div>
           <div>
             <strong>Inicio</strong>
@@ -1873,7 +1873,7 @@ function EventDetailPanel({ event, onBack, onInteresado, onVoy, onNoVoy, onOpenA
         </div>
         {event.descripcion && (
           <section className="event-description">
-            <strong>Descripcion</strong>
+            <strong>Descripción</strong>
             <p>{event.descripcion}</p>
           </section>
         )}
@@ -1888,7 +1888,7 @@ function EventDetailPanel({ event, onBack, onInteresado, onVoy, onNoVoy, onOpenA
           <button className="secondary" onClick={onNoVoy}>No voy</button>
         </div>
         <div className="actions">
-          <button className="secondary" onClick={onOpenAttendees}>Quien va</button>
+          <button className="secondary" onClick={onOpenAttendees}>Quién va</button>
           <button className="secondary" onClick={onOpenChat}>Chat evento</button>
           <button className="secondary" onClick={onOpenBailaCar}>BailaCar</button>
         </div>
