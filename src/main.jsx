@@ -1314,7 +1314,7 @@ function Home({
   return (
     <section className="screen">
       <div className="accent" />
-      <h2>Donde se baila hoy</h2>
+      <h2>Dónde se baila hoy</h2>
       <input className="search" placeholder="Buscar eventos, ciudades o salas" />
 
       <div className="quick-grid">
@@ -1561,7 +1561,7 @@ function HomeView({
             className="search"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Ejemplo: Malaga, Atrevete, bachata..."
+            placeholder="Ejemplo: Málaga, Atrévete, bachata..."
           />
         </label>
         <label>
@@ -1591,7 +1591,7 @@ function HomeView({
         )}
         <div className="list">
           {!hayBusquedaActiva && <p className="muted">Escribe una ciudad, sala o estilo y elige una fecha si quieres afinar la búsqueda.</p>}
-          {hayBusquedaActiva && eventosFiltrados.length === 0 && <p className="muted">No hay fiestas para esa busqueda todavia. Prueba otra fecha, ciudad o sala.</p>}
+          {hayBusquedaActiva && eventosFiltrados.length === 0 && <p className="muted">No hay fiestas para esa búsqueda todavía. Prueba otra fecha, ciudad o sala.</p>}
           {eventosFiltrados.slice(0, 8).map((item) => (
             <div key={item.id} className={`event-result-wrap ${Number(item.id) === Number(event?.id) ? "active" : ""} ${esLugarFavorito(item) ? "favorite" : ""}`}>
               <button className="list-row event-result" onClick={() => elegirEvento(item)}>
@@ -1628,8 +1628,8 @@ function HomeView({
         )}
         <button className="primary full-button" onClick={onVoy} disabled={!event}>Voy</button>
         <div className="actions">
-          <button className="secondary" onClick={onOpenEventDetail} disabled={!event}>Ver mas</button>
-          <button className="secondary" onClick={onOpenAttendees} disabled={!event}>Quien va</button>
+          <button className="secondary" onClick={onOpenEventDetail} disabled={!event}>Ver más</button>
+          <button className="secondary" onClick={onOpenAttendees} disabled={!event}>Quién va</button>
           <button className="secondary" onClick={onOpenChat} disabled={!event}>Chat evento</button>
         </div>
         <button className="secondary full-button" onClick={onOpenBailaCar} disabled={!event}>BailaCar</button>
