@@ -2396,7 +2396,7 @@ function FriendsPanel({ authHeaders, onBack, onOpenProfile, onMessage }) {
   async function cargar() {
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/social/amigos`, { headers: authHeaders });
+      const response = await fetchConTimeout(`${API_URL}/social/amigos`, { headers: authHeaders }, 6000);
       if (!response.ok) throw new Error();
       setAmigos(await response.json());
     } catch {
@@ -2411,10 +2411,10 @@ function FriendsPanel({ authHeaders, onBack, onOpenProfile, onMessage }) {
   }, []);
 
   async function accion(usuarioId, path, method, mensajeOk) {
-    const response = await fetch(`${API_URL}${path}`, {
+    const response = await fetchConTimeout(`${API_URL}${path}`, {
       method,
       headers: { "Content-Type": "application/json", ...authHeaders }
-    });
+    }, 8000);
 
     if (!response.ok) {
       alert(await leerErrorServidor(response, "No se pudo completar la accion."));
