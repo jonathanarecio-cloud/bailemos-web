@@ -2171,6 +2171,7 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage, onOp
   const [puntuacion, setPuntuacion] = useState(5);
   const [comentarioRecomendacion, setComentarioRecomendacion] = useState("");
   const [eventoRecomendado, setEventoRecomendado] = useState("");
+  const [loading, setLoading] = useState(false);
 
   async function cargarPerfil() {
     if (!user?.usuarioId || Number.isNaN(Number(user.usuarioId))) {
@@ -2178,12 +2179,13 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage, onOp
       return;
     }
 
+    setLoading(true);
     try {
       const [perfilResponse, socialResponse, valoracionesResponse, recomendacionesResponse] = await Promise.all([
-        fetch(`${API_URL}/perfil/${user.usuarioId}`, { headers: authHeaders }),
-        fetch(`${API_URL}/social/usuario/${user.usuarioId}/resumen`, { headers: authHeaders }),
-        fetch(`${API_URL}/valoraciones/usuario/${user.usuarioId}`, { headers: authHeaders }),
-        fetch(`${API_URL}/social/usuario/${user.usuarioId}/recomendaciones`, { headers: authHeaders })
+        fetchConTimeout(`${API_URL}/perfil/${user.usuarioId}`, { headers: authHeaders }, 6000),
+        fetchConTimeout(`${API_URL}/social/usuario/${user.usuarioId}/resumen`, { headers: authHeaders }, 6000),
+        fetchConTimeout(`${API_URL}/valoraciones/usuario/${user.usuarioId}`, { headers: authHeaders }, 6000),
+        fetchConTimeout(`${API_URL}/social/usuario/${user.usuarioId}/recomendaciones`, { headers: authHeaders }, 6000)
       ]);
 
       setPerfil(perfilResponse.ok ? await perfilResponse.json() : null);
@@ -2195,6 +2197,8 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage, onOp
       setSocial(null);
       setValoraciones([]);
       setRecomendaciones([]);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -2208,10 +2212,10 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage, onOp
       return;
     }
 
-    const response = await fetch(`${API_URL}${path}`, {
+    const response = await fetchConTimeout(`${API_URL}${path}`, {
       method,
       headers: { "Content-Type": "application/json", ...authHeaders }
-    });
+    }, 8000);
 
     if (!response.ok) {
       alert(await leerErrorServidor(response));
@@ -2251,7 +2255,7 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage, onOp
 
   async function guardarValoracion(event) {
     event.preventDefault();
-    const response = await fetch(`${API_URL}/valoraciones`, {
+    const response = await fetchConTimeout(`${API_URL}/valoraciones`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders },
       body: JSON.stringify({
@@ -2259,7 +2263,7 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage, onOp
         puntuacion: Number(puntuacion),
         comentario: comentarioValoracion
       })
-    });
+    }, 8000);
 
     if (!response.ok) {
       alert("No se pudo guardar la valoración.");
@@ -2272,14 +2276,14 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage, onOp
 
   async function guardarRecomendacion(event) {
     event.preventDefault();
-    const response = await fetch(`${API_URL}/social/usuario/${user.usuarioId}/recomendar`, {
+    const response = await fetchConTimeout(`${API_URL}/social/usuario/${user.usuarioId}/recomendar`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders },
       body: JSON.stringify({
         comentario: comentarioRecomendacion,
         eventoId: eventoRecomendado ? Number(eventoRecomendado) : null
       })
-    });
+    }, 8000);
 
     if (!response.ok) {
       alert("No se pudo guardar la recomendación.");
@@ -2308,6 +2312,7 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage, onOp
         {(perfil?.fotoData || perfil?.fotoUrl) ? <img className="profile-preview" src={perfil.fotoData || perfil.fotoUrl} alt={nombre} /> : <img className="profile-preview" src="/bailemos_logo.jpeg" alt={nombre} />}
         <h2>{nombre}</h2>
         <p className="muted">{perfil?.rol || user.rol}{perfil?.ciudadNombre ? ` - ${perfil.ciudadNombre}` : ""}</p>
+        {loading && <p className="notice-text">Actualizando perfil...</p>}
         <span className={`relation-pill ${social?.amigoMio ? "active" : ""}`}>{estadoRelacion}</span>
         {perfil?.biografia && <p>{perfil.biografia}</p>}
         <div className="stats-row">
