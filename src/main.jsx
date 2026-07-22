@@ -779,6 +779,7 @@ function App() {
             setSelectedUser(persona);
             setScreen("private-chat");
           }}
+          onRate={(usuarioId) => setScreen(`rating:${usuarioId}`)}
         />
       )}
 
@@ -2428,7 +2429,7 @@ function PublicProfilePanel({ user, events, authHeaders, onBack, onMessage, onOp
   );
 }
 
-function FriendsPanel({ authHeaders, onBack, onOpenProfile, onMessage }) {
+function FriendsPanel({ authHeaders, onBack, onOpenProfile, onMessage, onRate }) {
   const [amigos, setAmigos] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -2490,6 +2491,7 @@ function FriendsPanel({ authHeaders, onBack, onOpenProfile, onMessage }) {
               <div className="mini-actions">
                 <button className="primary compact" onClick={() => onMessage(amigo)}>Chatear</button>
                 <button className="secondary compact" onClick={() => onOpenProfile(amigo)}>Ver perfil</button>
+                <button className="secondary compact" onClick={() => onRate(amigo.usuarioId)}>Valorar</button>
                 <button
                   className="secondary compact"
                   onClick={() => accion(amigo.usuarioId, `/social/usuario/${amigo.usuarioId}/amigo`, "DELETE", "Amigo eliminado.")}
@@ -3636,4 +3638,3 @@ function RatingPanel({ session, authHeaders, defaultUserId, onBack }) {
 }
 
 createRoot(document.getElementById("root")).render(<App />);
-
