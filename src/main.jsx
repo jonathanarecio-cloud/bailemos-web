@@ -50,6 +50,26 @@ function fetchConTimeout(url, options = {}, timeoutMs = 8000) {
     .finally(() => window.clearTimeout(timeout));
 }
 
+async function precargarDatosPublicos() {
+  try {
+    const [eventosResponse, ciudadesResponse] = await Promise.allSettled([
+      fetchConTimeout(`${API_URL}/eventos`, {}, 6000),
+      fetchConTimeout(`${API_URL}/ciudades`, {}, 6000)
+    ]);
+
+    if (eventosResponse.status === "fulfilled" && eventosResponse.value.ok) {
+      storageSet(EVENTS_CACHE_KEY, await eventosResponse.value.json());
+    }
+
+    if (ciudadesResponse.status === "fulfilled" && ciudadesResponse.value.ok) {
+      const ciudades = await ciudadesResponse.value.json();
+      storageSet(CITIES_CACHE_KEY, ciudades?.length ? ciudades : ciudadesIniciales);
+    }
+  } catch {
+    // Precarga silenciosa: si Render esta despertando, la app sigue igual.
+  }
+}
+
 function leerArchivoComoDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -1003,6 +1023,10 @@ function AuthCard({ title, onBack, children }) {
 }
 
 function WelcomePro({ onLogin, onRegister, onLegal }) {
+  useEffect(() => {
+    precargarDatosPublicos();
+  }, []);
+
   return (
     <main className="welcome">
       <img className="logo hero-logo" src="/bailemos_logo.jpeg" alt="BAILEMOS!" />
