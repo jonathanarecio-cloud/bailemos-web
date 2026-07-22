@@ -2821,7 +2821,7 @@ function ProfilePanel({
         <input value={form.fotoUrl} onChange={(e) => setField("fotoUrl", e.target.value)} placeholder="URL de foto de perfil" />
         <label className="file-picker">
           Subir foto desde tu dispositivo
-          <input type="file" accept="image/jpeg,image/png" onChange={cargarFotoArchivo} />
+          <input type="file" accept="image/*" onChange={cargarFotoArchivo} />
         </label>
         <input value={form.videoUrl} onChange={(e) => setField("videoUrl", e.target.value)} placeholder="URL de video bailando" />
         <label className="file-picker">
