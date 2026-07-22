@@ -3052,6 +3052,7 @@ function PublishEvent({ ciudades, authHeaders, onBack, onCreated, editingEvent =
   const [textoImportado, setTextoImportado] = useState("");
   const [eventosDetectados, setEventosDetectados] = useState([]);
   const [publicandoMasivo, setPublicandoMasivo] = useState(false);
+  const [publicando, setPublicando] = useState(false);
 
   function setField(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -3116,7 +3117,7 @@ function PublishEvent({ ciudades, authHeaders, onBack, onCreated, editingEvent =
     try {
       let ultimoEvento = null;
       for (const item of eventosDetectados) {
-        const response = await fetch(`${API_URL}/eventos`, {
+        const response = await fetchConTimeout(`${API_URL}/eventos`, {
           method: "POST",
           headers: { "Content-Type": "application/json", ...authHeaders },
           body: JSON.stringify({
@@ -3128,7 +3129,7 @@ function PublishEvent({ ciudades, authHeaders, onBack, onCreated, editingEvent =
             cartelUrl: null,
             cartelData: null
           })
-        });
+        }, 8000);
         if (!response.ok) throw new Error();
         ultimoEvento = await response.json();
       }
@@ -3144,6 +3145,7 @@ function PublishEvent({ ciudades, authHeaders, onBack, onCreated, editingEvent =
 
   async function submit(event) {
     event.preventDefault();
+    setPublicando(true);
     const payload = {
       ...form,
       ciudadId: Number(form.ciudadId),
@@ -3156,18 +3158,27 @@ function PublishEvent({ ciudades, authHeaders, onBack, onCreated, editingEvent =
       cartelData: form.cartelData || null
     };
 
-    const response = await fetch(`${API_URL}/eventos${editingEvent?.id ? `/${editingEvent.id}` : ""}`, {
-      method: editingEvent?.id ? "PUT" : "POST",
-      headers: { "Content-Type": "application/json", ...authHeaders },
-      body: JSON.stringify(payload)
-    });
+    let response;
+    try {
+      response = await fetchConTimeout(`${API_URL}/eventos${editingEvent?.id ? `/${editingEvent.id}` : ""}`, {
+        method: editingEvent?.id ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify(payload)
+      }, 10000);
+    } catch {
+      alert("No se pudo conectar con el servidor para guardar el evento.");
+      setPublicando(false);
+      return;
+    }
 
     if (!response.ok) {
       alert(editingEvent ? "No se pudo actualizar el evento." : "No se pudo publicar el evento.");
+      setPublicando(false);
       return;
     }
 
     onCreated(await response.json());
+    setPublicando(false);
   }
 
   return (
@@ -3243,7 +3254,7 @@ function PublishEvent({ ciudades, authHeaders, onBack, onCreated, editingEvent =
             <button type="button" key={estilo} className={form.estilos.includes(estilo) ? "chip-active" : ""} onClick={() => toggleEstilo(estilo)}>{estilo}</button>
           ))}
         </div>
-        <button className="primary">{editingEvent ? "Guardar cambios" : "Publicar evento"}</button>
+        <button className="primary" disabled={publicando}>{publicando ? "Guardando..." : editingEvent ? "Guardar cambios" : "Publicar evento"}</button>
       </form>
     </section>
   );
@@ -3273,6 +3284,7 @@ function OrganizerPortal({ ciudades, authHeaders, onBack, onCreated }) {
   });
   const [eventosDetectados, setEventosDetectados] = useState([]);
   const [publicandoMasivo, setPublicandoMasivo] = useState(false);
+  const [publicando, setPublicando] = useState(false);
 
   function setField(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -3337,7 +3349,7 @@ function OrganizerPortal({ ciudades, authHeaders, onBack, onCreated }) {
     try {
       let ultimoEvento = null;
       for (const item of eventosDetectados) {
-        const response = await fetch(`${API_URL}/eventos`, {
+        const response = await fetchConTimeout(`${API_URL}/eventos`, {
           method: "POST",
           headers: { "Content-Type": "application/json", ...authHeaders },
           body: JSON.stringify({
@@ -3349,7 +3361,7 @@ function OrganizerPortal({ ciudades, authHeaders, onBack, onCreated }) {
             cartelUrl: null,
             cartelData: null
           })
-        });
+        }, 8000);
         if (!response.ok) throw new Error();
         ultimoEvento = await response.json();
       }
@@ -3365,6 +3377,7 @@ function OrganizerPortal({ ciudades, authHeaders, onBack, onCreated }) {
 
   async function submit(event) {
     event.preventDefault();
+    setPublicando(true);
     const payload = {
       ...form,
       ciudadId: Number(form.ciudadId),
@@ -3377,18 +3390,27 @@ function OrganizerPortal({ ciudades, authHeaders, onBack, onCreated }) {
       cartelData: form.cartelData || null
     };
 
-    const response = await fetch(`${API_URL}/eventos`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeaders },
-      body: JSON.stringify(payload)
-    });
+    let response;
+    try {
+      response = await fetchConTimeout(`${API_URL}/eventos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify(payload)
+      }, 10000);
+    } catch {
+      alert("No se pudo conectar con el servidor para publicar el evento.");
+      setPublicando(false);
+      return;
+    }
 
     if (!response.ok) {
       alert("No se pudo publicar el evento.");
+      setPublicando(false);
       return;
     }
 
     onCreated(await response.json());
+    setPublicando(false);
   }
 
   return (
@@ -3467,7 +3489,7 @@ function OrganizerPortal({ ciudades, authHeaders, onBack, onCreated }) {
             <button type="button" key={estilo} className={form.estilos.includes(estilo) ? "chip-active" : ""} onClick={() => toggleEstilo(estilo)}>{estilo}</button>
           ))}
         </div>
-        <button className="primary">Publicar evento real</button>
+        <button className="primary" disabled={publicando}>{publicando ? "Publicando..." : "Publicar evento real"}</button>
       </form>
     </section>
   );
