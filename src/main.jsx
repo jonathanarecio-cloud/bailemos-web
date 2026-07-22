@@ -43,6 +43,13 @@ function storageSet(key, value) {
   }
 }
 
+function fetchConTimeout(url, options = {}, timeoutMs = 8000) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...options, signal: controller.signal })
+    .finally(() => window.clearTimeout(timeout));
+}
+
 function leerArchivoComoDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -367,7 +374,7 @@ function App() {
   }, [avisosMensajes]);
 
   async function api(path, options = {}) {
-    const response = await fetch(`${API_URL}${path}`, {
+    const response = await fetchConTimeout(`${API_URL}${path}`, {
       ...options,
       headers: {
         "Content-Type": "application/json",
@@ -434,8 +441,8 @@ function App() {
 
     try {
       const [solicitudesResponse, chatsResponse] = await Promise.all([
-        fetch(`${API_URL}/social/amistad/solicitudes`, { headers: authHeaders }),
-        fetch(`${API_URL}/chat/privados`, { headers: authHeaders })
+        fetchConTimeout(`${API_URL}/social/amistad/solicitudes`, { headers: authHeaders }, 6000),
+        fetchConTimeout(`${API_URL}/chat/privados`, { headers: authHeaders }, 6000)
       ]);
       if (!solicitudesResponse.ok) throw new Error();
       const solicitudes = await solicitudesResponse.json();
