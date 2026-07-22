@@ -2515,6 +2515,7 @@ function MessagesPanel({ authHeaders, onBack, onOpen, onUpdated }) {
   const [chats, setChats] = useState([]);
   const [solicitudes, setSolicitudes] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [respondiendoId, setRespondiendoId] = useState(null);
 
   async function cargar() {
     setLoading(true);
@@ -2539,28 +2540,38 @@ function MessagesPanel({ authHeaders, onBack, onOpen, onUpdated }) {
   }, []);
 
   async function responderSolicitud(solicitud, accion) {
+    setRespondiendoId(solicitud.id);
     const url = accion === "aceptar"
       ? `${API_URL}/social/usuario/${solicitud.usuarioId}/solicitud-amistad/aceptar`
       : `${API_URL}/social/amistad/solicitudes/${solicitud.id}/${accion}`;
 
-    let response = await fetch(url, {
-      method: "POST",
-      headers: authHeaders
-    });
-
-    if (!response.ok && accion === "aceptar") {
-      response = await fetch(`${API_URL}/social/amistad/solicitudes/${solicitud.id}/aceptar`, {
+    let response;
+    try {
+      response = await fetchConTimeout(url, {
         method: "POST",
         headers: authHeaders
-      });
+      }, 8000);
+
+      if (!response.ok && accion === "aceptar") {
+        response = await fetchConTimeout(`${API_URL}/social/amistad/solicitudes/${solicitud.id}/aceptar`, {
+          method: "POST",
+          headers: authHeaders
+        }, 8000);
+      }
+    } catch {
+      alert("No se pudo responder la solicitud. Revisa la conexión e inténtalo de nuevo.");
+      setRespondiendoId(null);
+      return;
     }
 
     if (!response.ok) {
       alert(await leerErrorServidor(response, "No se pudo responder la solicitud."));
+      setRespondiendoId(null);
       return;
     }
 
     await cargar();
+    setRespondiendoId(null);
     alert(accion === "aceptar" ? "Solicitud aceptada. Ya sois amigos y podéis chatear." : "Solicitud rechazada.");
   }
 
@@ -2592,8 +2603,8 @@ function MessagesPanel({ authHeaders, onBack, onOpen, onUpdated }) {
                 <small>{solicitud.rol}</small>
               </span>
               <div className="mini-actions">
-                <button className="primary compact" onClick={() => responderSolicitud(solicitud, "aceptar")}>Aceptar</button>
-                <button className="secondary compact" onClick={() => responderSolicitud(solicitud, "rechazar")}>Rechazar</button>
+                <button className="primary compact" disabled={respondiendoId === solicitud.id} onClick={() => responderSolicitud(solicitud, "aceptar")}>Aceptar</button>
+                <button className="secondary compact" disabled={respondiendoId === solicitud.id} onClick={() => responderSolicitud(solicitud, "rechazar")}>Rechazar</button>
               </div>
             </div>
           ))
