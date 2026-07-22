@@ -2596,53 +2596,44 @@ function ProfilePanel({
   const esAdmin = session?.rol === "ADMIN" || session?.rol === "SUPER_ADMIN";
   const esPerfilProfesional = ["PROFESIONAL", "ORGANIZADOR", "ACADEMIA", "SALA", "ADMIN", "SUPER_ADMIN"].includes(session?.rol);
   const puedeEditarEvento = Boolean(event && esPerfilProfesional && (esAdmin || Number(event.organizadorId) === Number(session?.usuarioId)));
-  const [form, setForm] = useState({
-    nombreArtistico: "",
-    biografia: "",
-    ciudadId: "",
-    nivel: "PRINCIPIANTE",
-    estilos: [],
-    fotoUrl: "",
-    fotoData: "",
-    videoUrl: "",
-    videoData: "",
-    spotifyUrl: SPOTIFY_BAILEMOS_URL,
-    verificacionSolicitada: false,
-    perfilVerificado: false,
-    verificacionDescripcion: "",
-    instagram: "",
-    tiktok: "",
-    youtube: ""
-  });
-  const [loading, setLoading] = useState(true);
+  function crearFormularioPerfil(perfil = {}) {
+    return {
+      nombreArtistico: perfil.nombreArtistico || perfil.nombre || session?.nombre || "",
+      biografia: perfil.biografia || "",
+      ciudadId: perfil.ciudadId || "",
+      nivel: perfil.nivel || "PRINCIPIANTE",
+      estilos: perfil.estilos || [],
+      fotoUrl: perfil.fotoUrl || "",
+      fotoData: perfil.fotoData || "",
+      videoUrl: perfil.videoUrl || "",
+      videoData: perfil.videoData || "",
+      spotifyUrl: perfil.spotifyUrl || SPOTIFY_BAILEMOS_URL,
+      verificacionSolicitada: perfil.verificacionSolicitada || false,
+      perfilVerificado: perfil.perfilVerificado || false,
+      verificacionDescripcion: perfil.verificacionDescripcion || "",
+      instagram: perfil.instagram || "",
+      tiktok: perfil.tiktok || "",
+      youtube: perfil.youtube || ""
+    };
+  }
+  const [form, setForm] = useState(() => crearFormularioPerfil(storageGet(PROFILE_CACHE_KEY, {})));
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     async function cargarPerfil() {
       try {
-        const response = await fetch(`${API_URL}/perfil/me`, { headers: authHeaders });
+        const response = await fetchConTimeout(`${API_URL}/perfil/me`, { headers: authHeaders }, 6000);
         if (!response.ok) throw new Error();
         const perfil = await response.json();
-        setForm({
-          nombreArtistico: perfil.nombreArtistico || perfil.nombre || session?.nombre || "",
-          biografia: perfil.biografia || "",
-          ciudadId: perfil.ciudadId || "",
-          nivel: perfil.nivel || "PRINCIPIANTE",
-          estilos: perfil.estilos || [],
-          fotoUrl: perfil.fotoUrl || "",
-          fotoData: perfil.fotoData || "",
-          videoUrl: perfil.videoUrl || "",
-          videoData: perfil.videoData || "",
-          spotifyUrl: perfil.spotifyUrl || SPOTIFY_BAILEMOS_URL,
-          verificacionSolicitada: perfil.verificacionSolicitada || false,
-          perfilVerificado: perfil.perfilVerificado || false,
-          verificacionDescripcion: perfil.verificacionDescripcion || "",
-          instagram: perfil.instagram || "",
-          tiktok: perfil.tiktok || "",
-          youtube: perfil.youtube || ""
-        });
+        storageSet(PROFILE_CACHE_KEY, perfil);
+        const foto = perfil?.fotoData || perfil?.fotoUrl || "";
+        if (foto) {
+          localStorage.setItem(PROFILE_PHOTO_KEY, foto);
+        }
+        setForm(crearFormularioPerfil(perfil));
       } catch {
-        alert("No se pudo cargar tu perfil.");
+        // Si Render esta despertando, dejamos abierto el perfil con datos guardados.
       } finally {
         setLoading(false);
       }
