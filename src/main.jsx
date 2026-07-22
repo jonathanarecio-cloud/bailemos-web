@@ -2106,14 +2106,18 @@ function ProductReadinessPanel({ onBack }) {
 function PeoplePanel({ authHeaders, onBack, onOpenProfile, onMessage, onRate }) {
   const [personas, setPersonas] = useState([]);
   const [busqueda, setBusqueda] = useState("");
+  const [loading, setLoading] = useState(false);
 
   async function cargar() {
+    setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/usuarios`, { headers: authHeaders });
+      const response = await fetchConTimeout(`${API_URL}/usuarios`, { headers: authHeaders }, 6000);
       if (!response.ok) throw new Error();
       setPersonas(await response.json());
     } catch {
       setPersonas([]);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -2131,6 +2135,7 @@ function PeoplePanel({ authHeaders, onBack, onOpenProfile, onMessage, onRate }) 
       <button className="back" onClick={onBack}>Volver</button>
       <h2>Bailadores y profesionales</h2>
       <p className="muted">{filtradas.length} personas registradas visibles para ti.</p>
+      {loading && <p className="notice-text">Actualizando comunidad...</p>}
       <input className="search" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar por nombre, ciudad o rol" />
       <section className="card">
         {filtradas.length === 0 ? (
