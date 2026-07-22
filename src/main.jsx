@@ -2820,7 +2820,7 @@ function ProfilePanel({
         </div>
         <input value={form.fotoUrl} onChange={(e) => setField("fotoUrl", e.target.value)} placeholder="URL de foto de perfil" />
         <label className="file-picker">
-          Subir foto JPG/PNG hasta {MAX_FOTO_MB} MB
+          Subir foto desde tu dispositivo
           <input type="file" accept="image/jpeg,image/png" onChange={cargarFotoArchivo} />
         </label>
         <input value={form.videoUrl} onChange={(e) => setField("videoUrl", e.target.value)} placeholder="URL de video bailando" />
@@ -2833,8 +2833,8 @@ function ProfilePanel({
         )}
         <input value={form.spotifyUrl} onChange={(e) => setField("spotifyUrl", e.target.value)} placeholder="Playlist Spotify" />
         <section className="verification-box">
-          <strong>{form.perfilVerificado ? "Perfil verificado" : form.verificacionSolicitada ? "Verificacion solicitada" : "Verificacion profesional"}</strong>
-          <p>Usa esto si eres profesor, DJ, fotografo, sala, academia u organizador.</p>
+          <strong>{form.perfilVerificado ? "Perfil verificado" : form.verificacionSolicitada ? "Verificación solicitada" : "Verificación profesional"}</strong>
+          <p>Usa esto si eres profesor, DJ, fotógrafo, sala, academia u organizador.</p>
           <textarea
             value={form.verificacionDescripcion}
             onChange={(e) => setField("verificacionDescripcion", e.target.value)}
@@ -2847,7 +2847,7 @@ function ProfilePanel({
               onChange={(e) => setField("verificacionSolicitada", e.target.checked)}
               disabled={form.perfilVerificado}
             />
-            <span>Solicitar verificacion profesional</span>
+            <span>Solicitar verificación profesional</span>
           </label>
         </section>
         <input value={form.instagram} onChange={(e) => setField("instagram", e.target.value)} placeholder="Instagram" />
