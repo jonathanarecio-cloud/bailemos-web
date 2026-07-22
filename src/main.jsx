@@ -384,6 +384,7 @@ function App() {
     return "Notification" in window ? Notification.permission : "unsupported";
   });
   const [loading, setLoading] = useState(false);
+  const [asistenciaGuardando, setAsistenciaGuardando] = useState(false);
   const [notice, setNotice] = useState("");
 
   const authHeaders = useMemo(() => {
@@ -565,6 +566,7 @@ function App() {
   }
 
   async function marcarAsistencia(tipo) {
+    if (asistenciaGuardando) return;
     if (!event) {
       setNotice("Primero publica o selecciona un evento.");
       return;
@@ -581,12 +583,15 @@ function App() {
       noVoy: "Marcado como no voy."
     };
 
+    setAsistenciaGuardando(true);
     try {
       await api(rutas[tipo], { method: "POST", headers: authHeaders });
       setNotice(mensajes[tipo]);
       cargarInicio();
     } catch {
       setNotice("No se pudo guardar tu respuesta.");
+    } finally {
+      setAsistenciaGuardando(false);
     }
   }
 
@@ -653,6 +658,7 @@ function App() {
           onInteresado={() => marcarAsistencia("interesado")}
           onVoy={() => marcarAsistencia("voy")}
           onNoVoy={() => marcarAsistencia("noVoy")}
+          asistenciaGuardando={asistenciaGuardando}
           onSelectEvent={setEvent}
           onOpenChat={() => setScreen(event ? "event-chat" : "general-chat")}
           onOpenGeneralChat={() => setScreen("general-chat")}
@@ -696,6 +702,7 @@ function App() {
           onInteresado={() => marcarAsistencia("interesado")}
           onVoy={() => marcarAsistencia("voy")}
           onNoVoy={() => marcarAsistencia("noVoy")}
+          asistenciaGuardando={asistenciaGuardando}
           onOpenAttendees={() => setScreen("attendees")}
           onOpenChat={() => setScreen("event-chat")}
           onOpenBailaCar={() => setScreen("bailacar")}
@@ -1390,6 +1397,7 @@ function HomeView({
   events,
   ciudades,
   ciudadActiva,
+  asistenciaGuardando,
   onInteresado,
   onVoy,
   onNoVoy,
@@ -1627,7 +1635,9 @@ function HomeView({
             {esLugarFavorito(event) ? "Quitar de favoritos" : "Marcar sitio favorito"}
           </button>
         )}
-        <button className="primary full-button" onClick={onVoy} disabled={!event}>Voy</button>
+        <button className="primary full-button" onClick={onVoy} disabled={!event || asistenciaGuardando}>
+          {asistenciaGuardando ? "Guardando..." : "Voy"}
+        </button>
         <div className="actions">
           <button className="secondary" onClick={onOpenEventDetail} disabled={!event}>Ver más</button>
           <button className="secondary" onClick={onOpenAttendees} disabled={!event}>Quién va</button>
@@ -1792,7 +1802,7 @@ function AttendeesPanel({ event, authHeaders, onBack, onOpenProfile }) {
   );
 }
 
-function EventDetailPanel({ event, onBack, onInteresado, onVoy, onNoVoy, onOpenAttendees, onOpenChat, onOpenBailaCar }) {
+function EventDetailPanel({ event, asistenciaGuardando, onBack, onInteresado, onVoy, onNoVoy, onOpenAttendees, onOpenChat, onOpenBailaCar }) {
   const cartel = event?.cartelData || event?.cartelUrl || "";
   const fechaInicio = event?.fechaInicio ? new Date(event.fechaInicio).toLocaleString("es-ES") : "Fecha pendiente";
   const fechaFin = event?.fechaFin ? new Date(event.fechaFin).toLocaleString("es-ES") : "Sin hora de fin";
@@ -1884,9 +1894,9 @@ function EventDetailPanel({ event, onBack, onInteresado, onVoy, onNoVoy, onOpenA
           </a>
         )}
         <div className="actions attendance-actions">
-          <button className="secondary" onClick={onInteresado}>Interesado</button>
-          <button className="primary" onClick={onVoy}>Voy</button>
-          <button className="secondary" onClick={onNoVoy}>No voy</button>
+          <button className="secondary" onClick={onInteresado} disabled={asistenciaGuardando}>Interesado</button>
+          <button className="primary" onClick={onVoy} disabled={asistenciaGuardando}>{asistenciaGuardando ? "Guardando..." : "Voy"}</button>
+          <button className="secondary" onClick={onNoVoy} disabled={asistenciaGuardando}>No voy</button>
         </div>
         <div className="actions">
           <button className="secondary" onClick={onOpenAttendees}>Quién va</button>
