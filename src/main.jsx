@@ -2475,12 +2475,14 @@ function FriendsPanel({ authHeaders, onBack, onOpenProfile, onMessage }) {
 function MessagesPanel({ authHeaders, onBack, onOpen, onUpdated }) {
   const [chats, setChats] = useState([]);
   const [solicitudes, setSolicitudes] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   async function cargar() {
+    setLoading(true);
     try {
       const [chatsResponse, solicitudesResponse] = await Promise.all([
-        fetch(`${API_URL}/chat/privados`, { headers: authHeaders }),
-        fetch(`${API_URL}/social/amistad/solicitudes`, { headers: authHeaders })
+        fetchConTimeout(`${API_URL}/chat/privados`, { headers: authHeaders }, 6000),
+        fetchConTimeout(`${API_URL}/social/amistad/solicitudes`, { headers: authHeaders }, 6000)
       ]);
       setChats(chatsResponse.ok ? await chatsResponse.json() : []);
       setSolicitudes(solicitudesResponse.ok ? await solicitudesResponse.json() : []);
@@ -2488,6 +2490,8 @@ function MessagesPanel({ authHeaders, onBack, onOpen, onUpdated }) {
     } catch {
       setChats([]);
       setSolicitudes([]);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -2526,6 +2530,7 @@ function MessagesPanel({ authHeaders, onBack, onOpen, onUpdated }) {
       <button className="back" onClick={onBack}>Volver</button>
       <h2>Mis mensajes</h2>
       <p className="muted">Tus conversaciones privadas dentro de BAILEMOS.</p>
+      {loading && <p className="notice-text">Actualizando mensajes...</p>}
       <section className="message-summary">
         <div>
           <strong>{solicitudes.length}</strong>
